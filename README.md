@@ -16,7 +16,7 @@ can be installed by running [the install payload][install] on your PS5.
 An SVT Play icon will then appear on the Media tab on your PS5 dashboard.
 
 > [!NOTE]
-> Once the installation is completed, the application can launched without
+> Once the installation is completed, the application can be launched without
 > having to jailbreak the console after a reboot.
 
 ## Reporting Issues
