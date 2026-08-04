@@ -15,6 +15,10 @@ Assuming you have [elfldr.elf][elfldr] running on your PS5, a launcher
 can be installed by running [the install payload][install] on your PS5.
 An SVT Play icon will then appear under the Media tab on your PS5 dashboard.
 
+> [!NOTE]
+> Once installation is completed, the application can launched without
+> having to jailbreak the console.
+
 ## Reporting Issues
 If you encounter problems with this unofficial SVT Play UI, please
 [file a github issue][issues]. If you plan on sending pull requests which affect
