@@ -10,12 +10,12 @@ The majority of the UI has been produced by [claude.ai][claude].
 geo-blocked for devices without a Swedish IP address.
 
 ## Installing
-Assuming you have [ps5-payload-elfldr][elfldr] running on your PS5, a launcher
+Assuming you have [elfldr][elfldr] running on your PS5, a launcher
 can be installed by running [the install payload][install] on your PS5.
 An SVT Play icon will then appear under the Media tab on your PS5 dashboard.
 
 ## Reporting Issues
-If you encounter problems with ps5-payload-svtplay, please
+If you encounter problems with this unofficial SVT Play UI, please
 [file a github issue][issues]. If you plan on sending pull requests which affect
 more than a few lines of code, please file an issue before you start to work on
 you changes. This will allow us to discuss the solution properly before you
