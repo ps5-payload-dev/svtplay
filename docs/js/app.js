@@ -50,6 +50,12 @@
 	var gridEl = null;
 	var mode = "browse";    // browse | player | help
 
+	// True while the cursor is sitting in the nav rail. Opening a rail item
+	// loads its view but leaves the cursor on the menu, so the viewer can run
+	// down Start / Kanaler / Program A-Ö and see each one without being thrown
+	// into the listing; Right (or Cross on a card) is what hands focus over.
+	var railLock = false;
+
 	/* ------------------------------------------------------------ helpers */
 
 	function esc(s) {
@@ -164,7 +170,8 @@
 			badge = '<span class="badge folder">▤</span>';
 		}
 
-		return '<div class="card focusable" data-i="' + i + '">' +
+		return '<div class="card focusable" data-i="' + i + '"' +
+			(artable(entry) ? ' data-art="1"' : "") + ">" +
 			'<div class="thumb">' + thumb + badge + "</div>" +
 			'<div class="meta">' +
 			'<div class="name">' + esc(entry.name) + "</div>" +
@@ -183,12 +190,24 @@
 		}
 		gridEl.insertAdjacentHTML("beforeend", html);
 		drawn = end;
+		scheduleArt();
 	}
 
 	// Called on every focus change: keep at least GROW_MARGIN cards drawn ahead
 	// of the cursor so running down a long list never hits a wall.
 	Input.setFocusListener(function (el) {
-		if (!gridEl || !el || !el.getAttribute) {
+		if (!el || !el.getAttribute) {
+			return;
+		}
+
+		// The cursor is the only thing that decides whether the menu holds it.
+		railLock = !!el.getAttribute("data-rail");
+
+		// Moving the cursor is the only kind of scrolling there is here, so it
+		// is also when new cards come into view and want their artwork.
+		scheduleArt();
+
+		if (!gridEl) {
 			return;
 		}
 		var i = parseInt(el.getAttribute("data-i"), 10);
@@ -196,6 +215,123 @@
 			drawChunk();
 		}
 	});
+
+	/* ----------------------------------------------------------- artwork */
+
+	/*
+	 * Some listings arrive without pictures -- Program A-Ö above all, whose
+	 * document is a bare catalogue of names and paths -- and those cards used
+	 * to sit there as grey placeholders. There is no bulk image lookup to call,
+	 * so each bare card fetches its own poster from the show's page.
+	 *
+	 * That is one request per card, so only cards near the viewport ask, and
+	 * only a few at a time. The answer lands in the entry itself and in svt.js's
+	 * cache, so coming back to a letter is instant and opening the show costs
+	 * nothing extra.
+	 */
+	var ART_PARALLEL = 3;
+	var artQueue = [];
+	var artActive = 0;
+	var artTimer = null;
+
+	// Which entries can be looked up at all: anything addressed by an svtplay
+	// path. Genres and bare video ids have nowhere to fetch a picture from.
+	function artable(entry) {
+		return !entry.image &&
+			(entry.id.indexOf("show:") === 0 || entry.id.indexOf("path:") === 0);
+	}
+
+	function scheduleArt() {
+		if (artTimer) {
+			return;
+		}
+		artTimer = setTimeout(function () {
+			artTimer = null;
+			artScan();
+		}, 120);
+	}
+
+	// One screenful of slack in each direction, so a poster is usually there
+	// before the cursor reaches the card.
+	function artScan() {
+		var cards = elContent.querySelectorAll(".card[data-art]");
+		if (!cards.length) {
+			return;
+		}
+		var vw = window.innerWidth || 1920;
+		var vh = window.innerHeight || 1080;
+
+		for (var n = 0; n < cards.length; n++) {
+			var el = cards[n];
+			var r = el.getBoundingClientRect();
+			if (r.bottom < -vh || r.top > vh * 2 ||
+					r.right < -vw || r.left > vw * 2) {
+				continue;
+			}
+			// Claimed: whether it works or not, this card is not asked twice.
+			el.removeAttribute("data-art");
+			artQueue.push({el: el, token: token});
+		}
+		artPump();
+	}
+
+	function artPump() {
+		while (artActive < ART_PARALLEL && artQueue.length) {
+			artFetch(artQueue.shift());
+		}
+	}
+
+	function artFetch(job) {
+		var i = parseInt(job.el.getAttribute("data-i"), 10);
+		var entry = entries[i];
+		if (job.token !== token || !entry) {
+			return;
+		}
+
+		artActive++;
+		SVT.artwork(entry.id).then(function (url) {
+			if (job.token !== token || !job.el.parentNode) {
+				return;
+			}
+			// Keep it on the entry too: a redraw of this listing, or a return
+			// to it while the cache is warm, then draws the card complete.
+			entry.image = url;
+			var thumb = job.el.querySelector(".thumb");
+			if (!thumb) {
+				return;
+			}
+			thumb.insertAdjacentHTML("afterbegin",
+				'<img src="' + esc(url) + '" alt="" ' +
+				'onerror="this.style.display=\'none\'">');
+			var glyph = thumb.querySelector(".glyph");
+			if (glyph) {
+				glyph.parentNode.removeChild(glyph);
+			}
+		}, function () {
+			// No picture for this one: the placeholder glyph stays.
+		})["catch"](function () {
+			return null;
+		}).then(function () {
+			artActive--;
+			artPump();
+		});
+	}
+
+	// Every "put the cursor somewhere in the listing" goes through these two, so
+	// that a view loaded from the menu cannot steal it back.
+	function focusContent(i) {
+		if (railLock) {
+			return;
+		}
+		Input.focusIndex(i, SCOPE);
+	}
+
+	function focusFallback() {
+		if (railLock) {
+			return;
+		}
+		Input.focusFirst();
+	}
 
 	function notice(title, body, isError) {
 		elContent.innerHTML = '<div class="notice' +
@@ -212,7 +348,7 @@
 
 		if (!list.length) {
 			notice("Tomt", "Den här listan innehåller inget just nu.");
-			Input.focusFirst();
+			focusFallback();
 			return;
 		}
 
@@ -226,17 +362,33 @@
 		while (drawn <= want && drawn < list.length) {
 			drawChunk();
 		}
-		Input.focusIndex(want, SCOPE);
+		focusContent(want);
+		scheduleArt();
 	}
 
 	/* --------------------------------------------------------------- rail */
 
+	// The rail is rebuilt on every render, which threw away the focus ring along
+	// with the old nodes. Remember which item had it and put it back on the new
+	// node; the return value says whether the cursor is still in the menu, and
+	// is what stops the fresh listing from grabbing it.
 	function drawRail(currentView) {
+		var focused = elRail.querySelector(".rail-item.focused");
+		var keep = focused ? focused.getAttribute("data-rail") : null;
+
 		elRail.innerHTML = RAIL.map(function (r) {
 			return '<div class="rail-item focusable' +
 				(r.id === currentView ? " current" : "") +
 				'" data-rail="' + r.id + '">' + esc(r.name) + "</div>";
 		}).join("");
+
+		if (keep) {
+			Input.focus(elRail.querySelector(
+				'.rail-item[data-rail="' + keep + '"]'
+			));
+			return true;
+		}
+		return false;
 	}
 
 	/* -------------------------------------------------------------- views */
@@ -263,8 +415,10 @@
 
 	function back() {
 		if (stack.length < 2) {
-			// Nothing to pop: treat Circle as "take me to the menu".
-			Input.focus(elRail.querySelector(".rail-item"));
+			// Nothing to pop: treat Circle as "take me to the menu", landing on
+			// the entry this view belongs to rather than on the first one.
+			Input.focus(elRail.querySelector(".rail-item.current") ||
+				elRail.querySelector(".rail-item"));
 			return;
 		}
 		stack.pop();
@@ -287,7 +441,7 @@
 
 	function render(frame) {
 		var my = ++token;
-		drawRail(rootView(frame));
+		railLock = drawRail(rootView(frame));
 		gridEl = null;
 		entries = [];
 		busy(true);
@@ -301,7 +455,7 @@
 			busy(false);
 			notice("Det gick inte att hämta listan",
 				(err && err.message) || String(err), true);
-			Input.focusFirst();
+			focusFallback();
 		}
 
 		function done(list, head) {
@@ -339,7 +493,7 @@
 							"</span>" +
 							'<span class="count">' + l.count + "</span></div>";
 					}).join("") + "</div>";
-				Input.focusIndex(frame.focus, SCOPE);
+				focusContent(frame.focus);
 			}, fail);
 			return;
 		}
@@ -407,7 +561,7 @@
 		var placed = false;
 
 		function place() {
-			if (placed) { return; }
+			if (placed || railLock) { return; }
 			var cards = Input.all(SCOPE);
 			if (!cards.length) { return; }
 			placed = true;
@@ -428,6 +582,7 @@
 				shelf.innerHTML = list.map(function (e, i) {
 					return cardHtml(e, base + i);
 				}).join("");
+				scheduleArt();
 
 				// A cold start puts the cursor on the first card that appears;
 				// a remembered position waits until every row is in.
@@ -446,7 +601,7 @@
 				if (pending === 0) {
 					busy(false);
 					place();
-					if (!placed) { Input.focusFirst(); }
+					if (!placed) { focusFallback(); }
 				}
 			});
 		});

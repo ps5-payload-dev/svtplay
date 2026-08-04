@@ -31,8 +31,6 @@ var SVT = (function () {
 			"00be06320342614f4b186e9c7710c29a7fc235a1936bde08a6ab0f427131bfaf"],
 		GRID:      ["GridPage",
 			"a8248fc130da34208aba94c4d5cc7bd44187b5f36476d8d05e03724321aafb40"],
-		GRID_LIVE: ["GridPage",
-			"1e2d15ff7ffa578d33ebf1287d3f7af7fd47125552b564e96fd277a744345a69"],
 		DETAILS:   ["DetailsPageQuery",
 			"e240d515657bbb54f33cf158cea581f6303b8f01f3022ea3f9419fbe3a5614b0"],
 		VIDEO_ID:  ["DetailsPageQuery",
@@ -40,8 +38,12 @@ var SVT = (function () {
 	};
 
 	// The curated rows of the start page: [id, name, description, selectionId].
+	//
+	// "live_start" is deliberately not among them: that selection is SVT's
+	// schedule strip, so most of what it holds has not begun yet and none of it
+	// is playable. Live channels are one press away under "Kanaler", where the
+	// entries really are on air.
 	var START_ROWS = [
-		["live",       "Live nu",       "Sänds just nu",    "live_start"],
 		["popular",    "Populärt",      "Mest sedda",       "popular_start"],
 		["latest",     "Senaste",       "Nyss tillagt",     "latest_start"],
 		["lastchance", "Sista chansen", "Försvinner snart", "lastchance_start"]
@@ -295,18 +297,13 @@ var SVT = (function () {
 
 	// One of the curated rows of the start page.
 	function selection(selectionId) {
-		var op = selectionId === "live_start" ? OP.GRID_LIVE : OP.GRID;
 		return cached("sel:" + selectionId, function () {
-			return query(op, {
+			return query(OP.GRID, {
 				selectionId: selectionId,
 				includeFullOppetArkiv: true
 			}).then(function (res) {
 				var sel = res.selectionById || {};
-				var entries = toEntries(sel.items);
-				if (selectionId === "live_start") {
-					entries.forEach(function (e) { e.live = true; });
-				}
-				return entries;
+				return toEntries(sel.items);
 			});
 		});
 	}
@@ -431,15 +428,47 @@ var SVT = (function () {
 		});
 	}
 
-	// A show: its seasons, its clips, and whatever else SVT groups with it.
-	// 'groupId' picks one of those groups once the viewer has opened it.
-	function show(path, groupId) {
+	// The details page behind an svtplay path. Both show() and artwork() go
+	// through here so that a poster fetched for a card is the same cached
+	// response the show page is built from a moment later.
+	function detailsPage(path) {
 		return cached("show:" + path, function () {
 			return query(OP.DETAILS, {
 				path: path,
 				includeFullOppetArkiv: true
 			});
-		}).then(function (res) {
+		});
+	}
+
+	// The A-Ö catalogue is a plain text listing: the document behind it hands
+	// out names and paths and no artwork whatsoever, which is why those cards
+	// came up bare. There is no bulk image endpoint to ask instead, so a card
+	// without a picture fetches its own from the show's page; the caller is
+	// expected to do that only for cards actually on screen.
+	function artwork(id, width) {
+		var path = "";
+		if (id.indexOf("show:") === 0) {
+			path = id.substring(5).split("|")[0];
+		} else if (id.indexOf("path:") === 0) {
+			path = id.substring(5);
+		}
+		if (!path) {
+			return Promise.reject(new Error("no path in " + id));
+		}
+		return detailsPage(path).then(function (res) {
+			var page = res.detailsPageByPath;
+			var url = page ? pickImage(page, width || 640, "") : "";
+			if (!url) {
+				throw new Error("no artwork for " + path);
+			}
+			return url;
+		});
+	}
+
+	// A show: its seasons, its clips, and whatever else SVT groups with it.
+	// 'groupId' picks one of those groups once the viewer has opened it.
+	function show(path, groupId) {
+		return detailsPage(path).then(function (res) {
 			var page = res.detailsPageByPath;
 			if (!page) {
 				throw new Error("no such show: " + path);
@@ -603,6 +632,7 @@ var SVT = (function () {
 		genres: genres,
 		genre: genre,
 		show: show,
+		artwork: artwork,
 		resolve: resolve,
 		clearCache: clearCache
 	};
