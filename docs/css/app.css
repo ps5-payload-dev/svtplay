@@ -70,7 +70,7 @@ body {
 
 #logo {
     width: 128px;
-    content:url("/img/logo.png");
+    content:url("../img/logo.png");
 }
 
 #crumb {
