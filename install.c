@@ -14,13 +14,21 @@ You should have received a copy of the GNU General Public License
 along with this program; see the file COPYING. If not, see
 <http://www.gnu.org/licenses/>.  */
 
+#include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 
+#include <sys/mount.h>
 #include <sys/stat.h>
+#include <sys/uio.h>
 
 #include <ps5/kernel.h>
+
+
+#define IOVEC_SIZE(x) (sizeof(x) / sizeof(struct iovec))
+#define IOVEC_ENTRY(x) {x ? x : 0, x ? strlen(x)+1 : 0}
 
 
 #define INCASSET(name, file)			\
@@ -48,10 +56,20 @@ INCASSET(param, "sce_sys/param.json");
 INCASSET(icon0, "sce_sys/icon0.png");
 
 
-#include <errno.h>
-#include <fcntl.h>
-#include <unistd.h>
+static int
+remount_system_ex(void) {
+  struct iovec iov[] = {
+    IOVEC_ENTRY("from"),      IOVEC_ENTRY("/dev/ssd0.system_ex"),
+    IOVEC_ENTRY("fspath"),    IOVEC_ENTRY("/system_ex"),
+    IOVEC_ENTRY("fstype"),    IOVEC_ENTRY("exfatfs"),
+    IOVEC_ENTRY("large"),     IOVEC_ENTRY("yes"),
+    IOVEC_ENTRY("timezone"),  IOVEC_ENTRY("static"),
+    IOVEC_ENTRY("async"),     IOVEC_ENTRY(NULL),
+    IOVEC_ENTRY("ignoreacl"), IOVEC_ENTRY(NULL),
+  };
 
+  return nmount(iov, IOVEC_SIZE(iov), MNT_UPDATE);
+}
 
 
 static int
@@ -103,6 +121,8 @@ main(int argc, char *argv[]) {
   }
 
   sceAppInstUtilAppUnInstall(TITLE_ID);
+
+  remount_system_ex();
 
   if(mkdir("/system_ex/app/"TITLE_ID, 0755) && errno != EEXIST) {
     perror("mkdir");
