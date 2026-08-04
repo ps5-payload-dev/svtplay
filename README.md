@@ -22,7 +22,7 @@ you changes. This will allow us to discuss the solution properly before you
 commit time and effort.
 
 ## License
-ps5-payload-svtplay is licensed under the GPLv3+.
+GPLv3+.
 
 [svtplay]: https://svtplay.se
 [claude]: https://claude.ai
