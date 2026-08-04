@@ -1,8 +1,8 @@
 # SVT Play
 
-This is an unofficial 10-foot UI for [SVT Play][svtplay], the Swedish public
-service television broadcaster. The UI is designed specifically for jailbroken
-PS5 and is hosted at https://ps5-payload-dev.github.io/svtplay.
+This is an unofficial [10-foot UI][10foot] for [SVT Play][svtplay], the Swedish
+public service television broadcaster. The UI is designed specifically for
+jailbroken PS5 and is hosted at https://ps5-payload-dev.github.io/svtplay.
 
 The majority of the UI has been produced by [claude.ai][claude].
 
@@ -11,7 +11,7 @@ The majority of the UI has been produced by [claude.ai][claude].
 > geo-blocked for devices without a Swedish IP address.
 
 ## Installing
-Assuming you have [elfldr][elfldr] running on your PS5, a launcher
+Assuming you have [elfldr.elf][elfldr] running on your PS5, a launcher
 can be installed by running [the install payload][install] on your PS5.
 An SVT Play icon will then appear under the Media tab on your PS5 dashboard.
 
@@ -23,10 +23,12 @@ you changes. This will allow us to discuss the solution properly before you
 commit time and effort.
 
 ## License
-GPLv3+.
+[GPLv3+][gplv3].
 
 [svtplay]: https://svtplay.se
 [claude]: https://claude.ai
 [elfldr]: https://github.com/ps5-payload-dev/elfldr
 [install]: https://github.com/ps5-payload-dev/svtplay/releases/latest/download/svtplay-install.elf
 [issues]: https://github.com/ps5-payload-dev/svtplay/issues/new
+[gplv3]: https://www.gnu.org/licenses/gpl-3.0.html
+[10foot]: https://en.wikipedia.org/wiki/10-foot_user_interface
