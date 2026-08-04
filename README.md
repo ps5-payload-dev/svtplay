@@ -2,10 +2,12 @@
 
 This is an unofficial 10-foot UI for [SVT Play][svtplay], the Swedish public
 service television broadcaster. The UI is designed specifically for jailbroken
-PS5 and is hosted at https://ps5-payload-dev.github.io/svtplay. **Note:** many
-streams, if not all, are geo-blocked for devices without a Swedish IP address.
+PS5 and is hosted at https://ps5-payload-dev.github.io/svtplay.
 
 The majority of the UI has been produced by claude.ai.
+
+**Note:** many streams provided by svtplay.se, if not all, are geo-blocked for
+devices without a Swedish IP address.
 
 ## Installing
 Assuming you have [ps5-payload-elfldr][elfldr] running on your PS5, a launcher
