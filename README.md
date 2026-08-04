@@ -6,8 +6,9 @@ PS5 and is hosted at https://ps5-payload-dev.github.io/svtplay.
 
 The majority of the UI has been produced by [claude.ai][claude].
 
-**Note:** many streams provided by [SVT Play][svtplay], if not all, are
-geo-blocked for devices without a Swedish IP address.
+> [!NOTE]
+> Many streams provided by [SVT Play][svtplay], if not all, are
+> geo-blocked for devices without a Swedish IP address.
 
 ## Installing
 Assuming you have [elfldr][elfldr] running on your PS5, a launcher
