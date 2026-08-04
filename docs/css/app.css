@@ -119,6 +119,30 @@ body {
 	min-height: 0;
 }
 
+/* ---------------------------------------------------------- pad glyphs */
+
+/*
+ * One square box for every sprite. They are drawn on a shared 96x96 canvas --
+ * the shoulder badges are wide and short inside it, the face buttons round --
+ * so equal boxes are what keeps a row of mixed prompts optically aligned.
+ * Sized in em so they track whatever type they sit next to.
+ */
+.btn {
+	width: 1.9em;
+	height: 1.9em;
+	vertical-align: middle;
+	-webkit-user-select: none;
+	user-select: none;
+}
+.btn + .btn { margin-left: 0.1em; }
+
+/* the "/" in prompts like L1 / R1 */
+.sep {
+	font-style: normal;
+	color: var(--faint);
+	margin: 0 0.15em;
+}
+
 #hints {
 	flex: 0 0 auto;
 	padding: 0.7rem var(--safe-x) var(--safe-y);
@@ -129,10 +153,21 @@ body {
 	white-space: nowrap;
 	overflow: hidden;
 }
+#hints span,
+#osd-hints span {
+	display: -webkit-box;
+	display: flex;
+	-webkit-box-align: center;
+	align-items: center;
+}
 #hints b {
 	color: var(--dim);
 	font-weight: 600;
 	margin-right: 0.4em;
+	display: -webkit-box;
+	display: flex;
+	-webkit-box-align: center;
+	align-items: center;
 }
 
 /* ------------------------------------------------------------------ rail */
@@ -419,7 +454,15 @@ body {
 	display: flex;
 	gap: 1.6rem;
 }
-#osd-hints b { color: var(--dim); font-weight: 600; margin-right: 0.4em; }
+#osd-hints b {
+	color: var(--dim);
+	font-weight: 600;
+	margin-right: 0.4em;
+	display: -webkit-box;
+	display: flex;
+	-webkit-box-align: center;
+	align-items: center;
+}
 
 #spinner {
 	position: absolute;
@@ -452,8 +495,9 @@ body {
 }
 #help h2 { font-size: 1.8rem; margin-bottom: 1.2rem; }
 #help table { border-collapse: collapse; font-size: 1.05rem; }
-#help td { padding: 0.35rem 1.4rem 0.35rem 0; vertical-align: top; }
-#help td:first-child { color: var(--green); font-weight: 700; white-space: nowrap; }
+#help td { padding: 0.35rem 1.4rem 0.35rem 0; vertical-align: middle; }
+#help td:first-child { white-space: nowrap; line-height: 0; }
+#help td:first-child .btn { width: 2.3em; height: 2.3em; }
 #help td:nth-child(2) { color: var(--faint); white-space: nowrap; }
 #help .cols { display: flex; gap: 5rem; flex-wrap: wrap; }
 #help h3 { font-size: 1.2rem; color: var(--dim); margin-bottom: 0.6rem; font-weight: 600; }

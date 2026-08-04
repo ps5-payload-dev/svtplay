@@ -83,10 +83,57 @@
 		elClock.textContent = d.getHours() + ":" + (m < 10 ? "0" : "") + m;
 	}
 
-	function hints(pairs) {
-		elHints.innerHTML = pairs.map(function (p) {
-			return "<span><b>" + esc(p[0]) + "</b>" + esc(p[1]) + "</span>";
+	/* -------------------------------------------------------- pad glyphs */
+
+	// Button prompts are drawn as small PNGs from img/btn. Every sprite shares
+	// one 96x96 canvas, so a single square box lines the whole set up without
+	// per-button nudging. The alt text is the old UTF-8 legend, which is what
+	// a viewer sees if the sprite ever fails to load.
+	var BTN = {
+		cross:     ["cross",    "✕"],
+		circle:    ["circle",   "○"],
+		square:    ["square",   "□"],
+		triangle:  ["triangle", "△"],
+		options:   ["options",  "☰"],
+		dpad:      ["dpad",     "D-pad"],
+		"dpad-lr": ["dpad-lr",  "← →"],
+		"dpad-ud": ["dpad-ud",  "↑ ↓"],
+		l1: ["l1", "L1"], r1: ["r1", "R1"],
+		l2: ["l2", "L2"], r2: ["r2", "R2"],
+		l3: ["l3", "L3"], r3: ["r3", "R3"]
+	};
+
+	// A spec is whitespace separated: known names become sprites, anything
+	// else is passed through as a literal, so "l1 / r1" keeps its slash.
+	function glyphs(spec) {
+		return String(spec).split(/\s+/).map(function (t) {
+			var b = BTN[t];
+			if (!b) {
+				return '<i class="sep">' + esc(t) + "</i>";
+			}
+			return '<img class="btn" src="img/btn/' + b[0] + '.png" alt="' +
+				esc(b[1]) + '">';
 		}).join("");
+	}
+
+	// Decoding a sprite the first time it is inserted costs a frame, and the
+	// hint bar is rebuilt on every view change. Warm them all up once.
+	(function preloadGlyphs() {
+		for (var k in BTN) {
+			if (Object.prototype.hasOwnProperty.call(BTN, k)) {
+				new Image().src = "img/btn/" + BTN[k][0] + ".png";
+			}
+		}
+	}());
+
+	function hintHtml(pairs) {
+		return pairs.map(function (p) {
+			return "<span><b>" + glyphs(p[0]) + "</b>" + esc(p[1]) + "</span>";
+		}).join("");
+	}
+
+	function hints(pairs) {
+		elHints.innerHTML = hintHtml(pairs);
 	}
 
 	function fmtTime(t) {
@@ -518,14 +565,15 @@
 		document.getElementById("osd-title").textContent = entry.name;
 		document.getElementById("osd-desc").textContent = entry.description || "";
 		document.getElementById("osd-state").textContent = "Laddar…";
-		document.getElementById("osd-hints").innerHTML =
-			"<span><b>✕</b>Paus</span>" +
-			"<span><b>←→</b>10 s</span>" +
-			"<span><b>L1/R1</b>1 min</span>" +
-			"<span><b>L2/R2</b>5 min</span>" +
-			"<span><b>□</b>Text</span>" +
-			"<span><b>△</b>Ljudspår</span>" +
-			"<span><b>○</b>Stäng</span>";
+		document.getElementById("osd-hints").innerHTML = hintHtml([
+			["cross",   "Paus"],
+			["dpad-lr", "10 s"],
+			["l1 r1",   "1 min"],
+			["l2 r2",   "5 min"],
+			["square",  "Text"],
+			["triangle", "Ljudspår"],
+			["circle",  "Stäng"]
+		]);
 		showOsd(true);
 
 		SVT.resolve(entry.id).then(function (url) {
@@ -749,31 +797,31 @@
 	function helpHtml() {
 		function rows(list) {
 			return "<table>" + list.map(function (r) {
-				return "<tr><td>" + esc(r[0]) + "</td><td>" + esc(r[1]) +
+				return "<tr><td>" + glyphs(r[0]) + "</td><td>" + esc(r[1]) +
 					"</td><td>" + esc(r[2]) + "</td></tr>";
 			}).join("") + "</table>";
 		}
 		return "<h2>Kontroller</h2><div class=\"cols\">" +
 			"<div><h3>Bläddra</h3>" + rows([
-				["✕", "Enter", "Öppna"],
-				["○", "Escape", "Tillbaka"],
-				["D-pad", "Piltangenter", "Flytta markören"],
-				["L1 / R1", "F5 / F6", "Sida upp / ner"],
-				["L2 / R2", "F7 / F8", "Först / sist"],
-				["△", "F1", "Uppdatera listan"],
-				["☰", "F3", "Den här hjälpen"]
+				["cross", "Enter", "Öppna"],
+				["circle", "Escape", "Tillbaka"],
+				["dpad", "Piltangenter", "Flytta markören"],
+				["l1 / r1", "F5 / F6", "Sida upp / ner"],
+				["l2 / r2", "F7 / F8", "Först / sist"],
+				["triangle", "F1", "Uppdatera listan"],
+				["options", "F3", "Den här hjälpen"]
 			]) + "</div>" +
 			"<div><h3>Spelare</h3>" + rows([
-				["✕", "Enter", "Spela / pausa"],
-				["○", "Escape", "Stäng spelaren"],
-				["← →", "Piltangenter", "Spola 10 sekunder"],
-				["↑ ↓", "Piltangenter", "Volym"],
-				["L1 / R1", "F5 / F6", "Spola 1 minut"],
-				["L2 / R2", "F7 / F8", "Spola 5 minuter"],
-				["□", "F2", "Byt textspår"],
-				["△", "F1", "Byt ljudspår"],
-				["L3", "F9", "Börja om"],
-				["R3", "F10", "Fyll skärmen / passa in"]
+				["cross", "Enter", "Spela / pausa"],
+				["circle", "Escape", "Stäng spelaren"],
+				["dpad-lr", "Piltangenter", "Spola 10 sekunder"],
+				["dpad-ud", "Piltangenter", "Volym"],
+				["l1 / r1", "F5 / F6", "Spola 1 minut"],
+				["l2 / r2", "F7 / F8", "Spola 5 minuter"],
+				["square", "F2", "Byt textspår"],
+				["triangle", "F1", "Byt ljudspår"],
+				["l3", "F9", "Börja om"],
+				["r3", "F10", "Fyll skärmen / passa in"]
 			]) + "</div></div>";
 	}
 
@@ -792,11 +840,11 @@
 
 	function browseHints() {
 		hints([
-			["✕", "Öppna"],
-			["○", "Tillbaka"],
-			["L1/R1", "Sida"],
-			["△", "Uppdatera"],
-			["☰", "Hjälp"]
+			["cross", "Öppna"],
+			["circle", "Tillbaka"],
+			["l1 r1", "Sida"],
+			["triangle", "Uppdatera"],
+			["options", "Hjälp"]
 		]);
 	}
 
