@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SVT Play</title>
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<div id="browser">
+
+	<header id="topbar">
+		<div class="wordmark"><span>svt</span>play</div>
+		<div id="crumb"></div>
+		<div id="clock"></div>
+	</header>
+
+	<div id="loadbar"><i></i></div>
+
+	<div id="main">
+		<nav id="rail"></nav>
+		<section id="content"></section>
+	</div>
+
+	<footer id="hints"></footer>
+</div>
+
+<!-- Playback ------------------------------------------------------------ -->
+<div id="player" hidden>
+	<video id="video" playsinline webkit-playsinline></video>
+
+	<div id="osd">
+		<div class="osd-top">
+			<h1 id="osd-title"></h1>
+			<p id="osd-desc"></p>
+		</div>
+		<div class="osd-bottom">
+			<div id="osd-state"></div>
+			<div class="bar"><i id="osd-fill"></i><b id="osd-head"></b></div>
+			<div class="times">
+				<span id="osd-pos">0:00</span>
+				<span id="osd-dur">--:--</span>
+			</div>
+			<div id="osd-hints"></div>
+		</div>
+	</div>
+
+	<div id="spinner" hidden><i></i></div>
+</div>
+
+<!-- Overlays ------------------------------------------------------------ -->
+<div id="help" hidden></div>
+<div id="toast" hidden></div>
+
+<script src="js/svt.js"></script>
+<script src="js/input.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

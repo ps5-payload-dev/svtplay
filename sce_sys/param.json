@@ -1,0 +1,11 @@
+{
+    "applicationCategoryType": 66048,
+    "titleId": "BREW10002",
+    "localizedParameters": {
+	"defaultLanguage": "en-US",
+	"en-US": {
+	    "titleName": "SVT Play"
+	}
+    },
+    "webAppUri": "https://ps5-payload-sdk.github.io/svtplay/index.html"
+}

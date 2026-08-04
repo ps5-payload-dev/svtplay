@@ -1,0 +1,482 @@
+/*
+ * SVT Play, for a 1920x1080 TV driven by a DualSense.
+ *
+ * Palette is svtplay.se's own: the site ships theme-color #000000 and tile
+ * colour #242626, so the shell is black with graphite panels, white type and
+ * the SVT Play green reserved for one job only -- showing where the focus is.
+ * Everything is a variable; --green is the one to change if you want to match
+ * a newer brand green exactly.
+ */
+
+:root {
+	--bg:        #000000;
+	--surface:   #16191a;
+	--surface-2: #242626;
+	--line:      #34393a;
+
+	--text:      #ffffff;
+	--dim:       #a4abab;
+	--faint:     #6b7273;
+
+	--green:     #2ec27e;
+	--green-lo:  #1b7a4f;
+	--live:      #e0322d;
+
+	/* TV overscan: never put anything in the outer 3% of the panel. */
+	--safe-x: 3.2vw;
+	--safe-y: 3.0vh;
+
+	--card-w: 19rem;
+	--gap: 1.4rem;
+	--radius: 6px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+	font-size: 16px;
+	/* 1080p is the design target; scale with the panel so 4K stays legible. */
+	font-size: calc(11px + 0.42vw);
+}
+
+body {
+	background: var(--bg);
+	color: var(--text);
+	font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+	font-size: 1rem;
+	line-height: 1.35;
+	height: 100vh;
+	overflow: hidden;
+	-webkit-font-smoothing: antialiased;
+}
+
+[hidden] { display: none !important; }
+
+/* ---------------------------------------------------------------- shell */
+
+#browser {
+	display: flex;
+	flex-direction: column;
+	height: 100vh;
+}
+
+#topbar {
+	display: flex;
+	align-items: center;
+	gap: 1.5rem;
+	padding: var(--safe-y) var(--safe-x) 0.9rem;
+	flex: 0 0 auto;
+}
+
+.wordmark {
+	font-size: 1.9rem;
+	font-weight: 700;
+	letter-spacing: -0.03em;
+	background: var(--green);
+	color: #000;
+	padding: 0.18em 0.5em 0.24em;
+	border-radius: var(--radius);
+	line-height: 1;
+}
+.wordmark span { font-weight: 400; }
+
+#crumb {
+	font-size: 1.35rem;
+	color: var(--dim);
+	flex: 1 1 auto;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+#crumb b { color: var(--text); font-weight: 600; }
+#crumb i { color: var(--faint); font-style: normal; margin: 0 0.5em; }
+
+#clock {
+	font-size: 1.2rem;
+	color: var(--faint);
+	font-variant-numeric: tabular-nums;
+}
+
+/* Two pixels of green while something is in flight; no spinner clutter. */
+#loadbar {
+	height: 2px;
+	background: transparent;
+	flex: 0 0 auto;
+	overflow: hidden;
+}
+#loadbar i {
+	display: block;
+	height: 100%;
+	width: 30%;
+	background: var(--green);
+	opacity: 0;
+}
+#loadbar.on i {
+	opacity: 1;
+	-webkit-animation: slide 1.1s linear infinite;
+	animation: slide 1.1s linear infinite;
+}
+@-webkit-keyframes slide { from { -webkit-transform: translateX(-100%);} to { -webkit-transform: translateX(400%);} }
+@keyframes slide { from { transform: translateX(-100%);} to { transform: translateX(400%);} }
+
+#main {
+	display: flex;
+	flex: 1 1 auto;
+	min-height: 0;
+}
+
+#hints {
+	flex: 0 0 auto;
+	padding: 0.7rem var(--safe-x) var(--safe-y);
+	font-size: 0.95rem;
+	color: var(--faint);
+	display: flex;
+	gap: 1.6rem;
+	white-space: nowrap;
+	overflow: hidden;
+}
+#hints b {
+	color: var(--dim);
+	font-weight: 600;
+	margin-right: 0.4em;
+}
+
+/* ------------------------------------------------------------------ rail */
+
+#rail {
+	flex: 0 0 auto;
+	width: 14rem;
+	padding: 0 1rem 0 var(--safe-x);
+	overflow: hidden;
+}
+
+.rail-item {
+	display: block;
+	padding: 0.7rem 0.9rem;
+	margin-bottom: 0.25rem;
+	border-radius: var(--radius);
+	color: var(--dim);
+	font-size: 1.15rem;
+	border: 2px solid transparent;
+}
+.rail-item.current { color: var(--text); font-weight: 600; }
+.rail-item.current::before {
+	content: "";
+	display: inline-block;
+	width: 4px; height: 1em;
+	background: var(--green);
+	margin-right: 0.6em;
+	vertical-align: -0.15em;
+}
+.rail-item.focused {
+	background: var(--surface-2);
+	border-color: var(--green);
+	color: var(--text);
+}
+
+/* --------------------------------------------------------------- content */
+
+#content {
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow-y: auto;
+	overflow-x: hidden;
+	padding: 0 var(--safe-x) 4rem 0.5rem;
+	-webkit-overflow-scrolling: touch;
+}
+
+.section-title {
+	font-size: 1.3rem;
+	font-weight: 600;
+	margin: 1.6rem 0 0.8rem 0.6rem;
+	color: var(--text);
+}
+.section-title span { color: var(--faint); font-weight: 400; margin-left: 0.6em; font-size: 0.9em; }
+
+/* Horizontal shelf, used on the start page. */
+.shelf {
+	display: flex;
+	gap: var(--gap);
+	overflow-x: auto;
+	overflow-y: hidden;
+	padding: 0.6rem;
+	scrollbar-width: none;
+}
+.shelf::-webkit-scrollbar { display: none; }
+
+/* Wrapping grid, used everywhere else. */
+.grid {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--gap);
+	padding: 0.6rem;
+}
+
+/* ----------------------------------------------------------------- cards */
+
+.card {
+	flex: 0 0 auto;
+	width: var(--card-w);
+	border-radius: var(--radius);
+	border: 3px solid transparent;
+	background: var(--surface);
+	overflow: hidden;
+	-webkit-transition: -webkit-transform 90ms ease-out;
+	transition: transform 90ms ease-out;
+}
+
+.card .thumb {
+	position: relative;
+	width: 100%;
+	padding-top: 56.25%;
+	background: var(--surface-2);
+}
+.card .thumb img {
+	position: absolute;
+	top: 0; left: 0;
+	width: 100%; height: 100%;
+	object-fit: cover;
+	display: block;
+}
+.card .thumb .glyph {
+	position: absolute;
+	top: 50%; left: 50%;
+	-webkit-transform: translate(-50%, -50%);
+	transform: translate(-50%, -50%);
+	font-size: 2.4rem;
+	color: var(--faint);
+}
+
+.card .meta {
+	padding: 0.7rem 0.8rem 0.85rem;
+}
+.card .name {
+	font-size: 1.05rem;
+	font-weight: 600;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.card .desc {
+	font-size: 0.92rem;
+	color: var(--dim);
+	margin-top: 0.2rem;
+	height: 2.5em;
+	overflow: hidden;
+}
+
+.card.focused {
+	border-color: var(--green);
+	background: var(--surface-2);
+	-webkit-transform: scale(1.045);
+	transform: scale(1.045);
+}
+.card.focused .desc { color: var(--text); }
+
+.badge {
+	position: absolute;
+	top: 0.5rem; left: 0.5rem;
+	background: var(--live);
+	color: #fff;
+	font-size: 0.75rem;
+	font-weight: 700;
+	letter-spacing: 0.06em;
+	padding: 0.15em 0.5em;
+	border-radius: 3px;
+	text-transform: uppercase;
+}
+.badge.folder { background: rgba(0,0,0,0.7); color: var(--green); }
+
+/* Letter chips for Program A-O. */
+.chip {
+	flex: 0 0 auto;
+	width: 6.5rem;
+	height: 6.5rem;
+	border-radius: var(--radius);
+	background: var(--surface);
+	border: 3px solid transparent;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+}
+.chip .letter { font-size: 2.1rem; font-weight: 700; }
+.chip .count { font-size: 0.8rem; color: var(--faint); margin-top: 0.2rem; }
+.chip.focused { border-color: var(--green); background: var(--surface-2); }
+.chip.focused .count { color: var(--dim); }
+
+/* Show header. */
+.showhead {
+	display: flex;
+	gap: 1.6rem;
+	padding: 0.8rem 0.6rem 0.4rem;
+	align-items: flex-start;
+}
+.showhead img {
+	width: 26rem;
+	border-radius: var(--radius);
+	display: block;
+	background: var(--surface-2);
+}
+.showhead .txt { flex: 1 1 auto; min-width: 0; padding-top: 0.4rem; }
+.showhead h2 { font-size: 1.9rem; font-weight: 700; margin-bottom: 0.5rem; }
+.showhead p { color: var(--dim); font-size: 1.05rem; max-width: 60ch; }
+
+/* Notices. */
+.notice {
+	padding: 3rem 1rem;
+	color: var(--dim);
+	font-size: 1.2rem;
+}
+.notice b { display: block; color: var(--text); margin-bottom: 0.4rem; font-size: 1.35rem; }
+.notice.error b { color: var(--live); }
+
+/* ---------------------------------------------------------------- player */
+
+#player {
+	position: fixed;
+	inset: 0;
+	top: 0; left: 0; right: 0; bottom: 0;
+	background: #000;
+	z-index: 50;
+}
+
+#video {
+	width: 100%;
+	height: 100%;
+	background: #000;
+	display: block;
+}
+#video::-webkit-media-controls { display: none !important; }
+#video::cue {
+	background: rgba(0,0,0,0.65);
+	color: #fff;
+	font-size: 1.05em;
+}
+
+#osd {
+	position: absolute;
+	inset: 0;
+	top: 0; left: 0; right: 0; bottom: 0;
+	pointer-events: none;
+	opacity: 0;
+	-webkit-transition: opacity 160ms ease-out;
+	transition: opacity 160ms ease-out;
+	background:
+		-webkit-linear-gradient(top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0) 22%, rgba(0,0,0,0) 55%, rgba(0,0,0,0.85) 100%);
+	background:
+		linear-gradient(to bottom, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0) 22%, rgba(0,0,0,0) 55%, rgba(0,0,0,0.85) 100%);
+}
+#osd.on { opacity: 1; }
+
+.osd-top {
+	padding: var(--safe-y) var(--safe-x) 0;
+}
+.osd-top h1 { font-size: 2.1rem; font-weight: 700; }
+.osd-top p { color: var(--dim); font-size: 1.05rem; margin-top: 0.3rem; max-width: 70ch; }
+
+.osd-bottom {
+	position: absolute;
+	left: var(--safe-x);
+	right: var(--safe-x);
+	bottom: var(--safe-y);
+}
+#osd-state {
+	font-size: 1.1rem;
+	color: var(--green);
+	font-weight: 600;
+	height: 1.6em;
+	letter-spacing: 0.02em;
+}
+.bar {
+	position: relative;
+	height: 6px;
+	background: rgba(255,255,255,0.22);
+	border-radius: 3px;
+	margin: 0.3rem 0 0.5rem;
+}
+.bar i {
+	display: block;
+	height: 100%;
+	width: 0;
+	background: var(--green);
+	border-radius: 3px;
+}
+.bar b {
+	position: absolute;
+	top: 50%;
+	left: 0;
+	width: 16px; height: 16px;
+	margin: -8px 0 0 -8px;
+	border-radius: 50%;
+	background: var(--green);
+}
+.times {
+	display: flex;
+	justify-content: space-between;
+	font-size: 1.05rem;
+	color: var(--dim);
+	font-variant-numeric: tabular-nums;
+}
+#osd-hints {
+	margin-top: 0.8rem;
+	font-size: 0.95rem;
+	color: var(--faint);
+	display: flex;
+	gap: 1.6rem;
+}
+#osd-hints b { color: var(--dim); font-weight: 600; margin-right: 0.4em; }
+
+#spinner {
+	position: absolute;
+	top: 50%; left: 50%;
+	margin: -24px 0 0 -24px;
+	width: 48px; height: 48px;
+}
+#spinner i {
+	display: block;
+	width: 100%; height: 100%;
+	border: 4px solid rgba(255,255,255,0.2);
+	border-top-color: var(--green);
+	border-radius: 50%;
+	-webkit-animation: spin 0.8s linear infinite;
+	animation: spin 0.8s linear infinite;
+}
+@-webkit-keyframes spin { to { -webkit-transform: rotate(360deg); } }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* -------------------------------------------------------------- overlays */
+
+#help {
+	position: fixed;
+	inset: 0;
+	top: 0; left: 0; right: 0; bottom: 0;
+	background: rgba(0,0,0,0.92);
+	z-index: 60;
+	padding: var(--safe-y) var(--safe-x);
+	overflow-y: auto;
+}
+#help h2 { font-size: 1.8rem; margin-bottom: 1.2rem; }
+#help table { border-collapse: collapse; font-size: 1.05rem; }
+#help td { padding: 0.35rem 1.4rem 0.35rem 0; vertical-align: top; }
+#help td:first-child { color: var(--green); font-weight: 700; white-space: nowrap; }
+#help td:nth-child(2) { color: var(--faint); white-space: nowrap; }
+#help .cols { display: flex; gap: 5rem; flex-wrap: wrap; }
+#help h3 { font-size: 1.2rem; color: var(--dim); margin-bottom: 0.6rem; font-weight: 600; }
+
+#toast {
+	position: fixed;
+	left: 50%;
+	bottom: 12vh;
+	-webkit-transform: translateX(-50%);
+	transform: translateX(-50%);
+	background: var(--surface-2);
+	border: 1px solid var(--line);
+	border-left: 4px solid var(--green);
+	padding: 0.8rem 1.4rem;
+	border-radius: var(--radius);
+	font-size: 1.1rem;
+	z-index: 70;
+	max-width: 70vw;
+}
+#toast.error { border-left-color: var(--live); }
