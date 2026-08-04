@@ -23,7 +23,7 @@ you changes. This will allow us to discuss the solution properly before you
 commit time and effort.
 
 ## License
-[GPLv3+][gplv3].
+[GPLv3+][gplv3]
 
 [svtplay]: https://svtplay.se
 [claude]: https://claude.ai
