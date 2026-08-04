@@ -12,7 +12,7 @@ geo-blocked for devices without a Swedish IP address.
 ## Installing
 Assuming you have [ps5-payload-elfldr][elfldr] running on your PS5, a launcher
 can be installed by running [the install payload][install] on your PS5.
-The launcher will then appear under the Media tab on your PS5 dashboard.
+An SVT Play icon will then appear under the Media tab on your PS5 dashboard.
 
 ## Reporting Issues
 If you encounter problems with ps5-payload-svtplay, please
