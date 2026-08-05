@@ -795,6 +795,279 @@
 		}
 	}
 
+	/* --------------------------------------------------------- stream info
+	 *
+	 * Nothing in the media element reports "what am I playing" directly, so
+	 * three sources are combined and whichever answers is used:
+	 *
+	 *   videoWidth/Height        always there, and it follows ABR switches
+	 *   webkit*DecodedByteCount  WebKit-only, differentiated into a real bitrate
+	 *   the master playlist      declared bandwidth, codecs and frame rate
+	 *
+	 * hls.js, when it is the one playing, knows all of it already. Every read
+	 * is guarded: an embedded build that exposes none of this still shows a
+	 * resolution, and the line simply gets shorter.
+	 */
+
+	var elTech = document.getElementById("osd-tech");
+	var variants = null;
+	var statsTimer = null;
+	var statsPrev = null;
+	var stats = {w: 0, h: 0, fps: 0, kbps: 0, dropped: 0, total: 0, buf: 0};
+
+	function parseMaster(text) {
+		var lines = String(text).split(/\r?\n/);
+		var out = [];
+		var i, m, a, v;
+		for (i = 0; i < lines.length; i++) {
+			if (lines[i].indexOf("#EXT-X-STREAM-INF:") !== 0) {
+				continue;
+			}
+			a = lines[i].slice(18);
+			v = {bandwidth: 0, width: 0, height: 0, codecs: "", fps: 0};
+			m = /AVERAGE-BANDWIDTH=(\d+)/.exec(a);
+			if (m) { v.bandwidth = parseInt(m[1], 10); }
+			m = /[^-]BANDWIDTH=(\d+)/.exec(" " + a);
+			if (m && !v.bandwidth) { v.bandwidth = parseInt(m[1], 10); }
+			m = /RESOLUTION=(\d+)x(\d+)/.exec(a);
+			if (m) { v.width = parseInt(m[1], 10); v.height = parseInt(m[2], 10); }
+			m = /CODECS="([^"]*)"/.exec(a);
+			if (m) { v.codecs = m[1]; }
+			m = /FRAME-RATE=([\d.]+)/.exec(a);
+			if (m) { v.fps = parseFloat(m[1]); }
+			out.push(v);
+		}
+		return out.length ? out : null;
+	}
+
+	// The manifest is fetched a second time purely for its metadata. It is in
+	// the CDN cache by now, and a CORS refusal is not worth reporting.
+	function loadVariants(url) {
+		variants = null;
+		if (!window.fetch) {
+			return;
+		}
+		fetch(url, {credentials: "omit"}).then(function (r) {
+			return r.ok ? r.text() : "";
+		}).then(function (t) {
+			variants = parseMaster(t);
+		})["catch"](function () { /* measured values still work */ });
+	}
+
+	function codecName(s) {
+		var seen = [];
+		String(s).split(/[,\s]+/).forEach(function (c) {
+			var n = c.indexOf("hvc1") === 0 || c.indexOf("hev1") === 0 ? "HEVC"
+				: c.indexOf("avc1") === 0 || c.indexOf("avc3") === 0 ? "H.264"
+				: c.indexOf("av01") === 0 ? "AV1"
+				: c.indexOf("vp09") === 0 ? "VP9"
+				: c.indexOf("mp4a.40.5") === 0 ? "HE-AAC"
+				: c.indexOf("mp4a") === 0 ? "AAC"
+				: c === "ec-3" ? "Dolby Digital+"
+				: c === "ac-3" ? "Dolby Digital"
+				: c ? c : "";
+			if (n && seen.indexOf(n) < 0) { seen.push(n); }
+		});
+		return seen.join(" / ");
+	}
+
+	// Which rendition is on screen. hls.js says so; natively it has to be
+	// inferred from the height, and where several renditions share a height
+	// the measured bitrate breaks the tie.
+	function variant() {
+		var best = null;
+		var i, v, d, bd;
+		if (hls && hls.levels && hls.currentLevel >= 0) {
+			v = hls.levels[hls.currentLevel];
+			return {
+				bandwidth: v.bitrate || 0,
+				width: v.width || 0,
+				height: v.height || 0,
+				codecs: [v.videoCodec || "", v.audioCodec || ""].join(","),
+				fps: v.frameRate || 0
+			};
+		}
+		if (!variants || !video.videoHeight) {
+			return null;
+		}
+		for (i = 0; i < variants.length; i++) {
+			v = variants[i];
+			if (v.height !== video.videoHeight) {
+				continue;
+			}
+			if (!best) { best = v; continue; }
+			d = Math.abs(v.bandwidth / 1000 - stats.kbps);
+			bd = Math.abs(best.bandwidth / 1000 - stats.kbps);
+			if (stats.kbps && d < bd) { best = v; }
+		}
+		return best;
+	}
+
+	function quality() {
+		if (video.getVideoPlaybackQuality) {
+			var q = video.getVideoPlaybackQuality();
+			return {
+				total: q.totalVideoFrames || 0,
+				dropped: q.droppedVideoFrames || 0
+			};
+		}
+		return {
+			total: video.webkitDecodedFrameCount || 0,
+			dropped: video.webkitDroppedFrameCount || 0
+		};
+	}
+
+	function bufferAhead() {
+		try {
+			var b = video.buffered;
+			for (var i = b.length - 1; i >= 0; i--) {
+				if (b.start(i) <= video.currentTime && b.end(i) >= video.currentTime) {
+					return b.end(i) - video.currentTime;
+				}
+			}
+		} catch (e) { /* not seekable yet */ }
+		return 0;
+	}
+
+	function sampleStats() {
+		var now = Date.now();
+		var q = quality();
+		var bytes = (video.webkitVideoDecodedByteCount || 0) +
+			(video.webkitAudioDecodedByteCount || 0);
+		var dt;
+
+		stats.w = video.videoWidth || 0;
+		stats.h = video.videoHeight || 0;
+		stats.dropped = q.dropped;
+		stats.total = q.total;
+		stats.buf = bufferAhead();
+
+		// A pause, a seek or a rendition change resets the counters; a negative
+		// delta means the sample is meaningless rather than that nothing arrived.
+		if (statsPrev && !video.paused) {
+			dt = (now - statsPrev.at) / 1000;
+			if (dt > 0.4) {
+				if (bytes > statsPrev.bytes) {
+					stats.kbps = Math.round((bytes - statsPrev.bytes) * 8 / dt / 1000);
+				}
+				if (q.total > statsPrev.total) {
+					stats.fps = Math.round((q.total - statsPrev.total) / dt);
+				}
+			}
+		}
+		statsPrev = {at: now, bytes: bytes, total: q.total};
+
+		drawTech();
+		if (mode === "help") {
+			drawHelpStats();
+		}
+	}
+
+	function bitrateText() {
+		var v = variant();
+		if (stats.kbps > 50) {
+			return (stats.kbps / 1000).toFixed(1) + " Mbit/s";
+		}
+		if (v && v.bandwidth) {
+			return "~" + (v.bandwidth / 1e6).toFixed(1) + " Mbit/s";
+		}
+		return "";
+	}
+
+	function fpsText() {
+		var v = variant();
+		if (stats.fps > 5) {
+			return stats.fps + " fps";
+		}
+		return v && v.fps ? Math.round(v.fps) + " fps" : "";
+	}
+
+	function drawTech() {
+		var v = variant();
+		var out = [];
+		if (stats.h) {
+			out.push(esc(stats.w + "×" + stats.h));
+		}
+		if (fpsText()) { out.push(esc(fpsText())); }
+		if (bitrateText()) { out.push(esc(bitrateText())); }
+		if (v && v.codecs) { out.push(esc(codecName(v.codecs))); }
+		// Dropped frames are the one number worth colouring: on this hardware
+		// they are the difference between "it plays" and "it plays smoothly".
+		if (stats.dropped > 0) {
+			out.push('<span class="warn">' + stats.dropped + " tappade bilder</span>");
+		}
+		elTech.innerHTML = out.join(" · ");
+	}
+
+	function statsRows() {
+		var v = variant();
+		var rows = [];
+		var pct = stats.total ? (stats.dropped / stats.total) * 100 : 0;
+
+		rows.push(["Upplösning", stats.h ? stats.w + "×" + stats.h : "–"]);
+		rows.push(["Bildfrekvens", fpsText() || "–"]);
+		rows.push(["Bithastighet", bitrateText() || "–"]);
+		if (v && v.codecs) { rows.push(["Kodek", esc(codecName(v.codecs))]); }
+		rows.push(["Buffert", stats.buf ? stats.buf.toFixed(1) + " s" : "–"]);
+		rows.push(["Bilder", stats.total
+			? stats.total + " avkodade, " +
+				(stats.dropped
+					? '<span class="warn">' + stats.dropped + " tappade (" +
+						pct.toFixed(1) + " %)</span>"
+					: "0 tappade")
+			: "–"]);
+		if (hls) {
+			rows.push(["Uppspelning", "hls.js " + (window.Hls.version || "")]);
+			if (hls.levels && hls.levels.length) {
+				rows.push(["Kvalitetsnivå", (hls.currentLevel + 1) + " av " +
+					hls.levels.length + (hls.autoLevelEnabled ? " (auto)" : "")]);
+			}
+			if (hls.bandwidthEstimate) {
+				rows.push(["Uppskattad bandbredd",
+					(hls.bandwidthEstimate / 1e6).toFixed(1) + " Mbit/s"]);
+			}
+		} else {
+			rows.push(["Uppspelning", "WebKit HLS"]);
+			if (variants) {
+				rows.push(["Renditioner", String(variants.length)]);
+			}
+		}
+		return rows;
+	}
+
+	function statsHtml() {
+		return "<table>" + statsRows().map(function (r) {
+			return "<tr><td>" + esc(r[0]) + "</td><td>" + r[1] + "</td></tr>";
+		}).join("") + "</table>";
+	}
+
+	function drawHelpStats() {
+		var box = document.getElementById("help-stats");
+		if (box) {
+			box.innerHTML = statsHtml();
+		}
+	}
+
+	function startStats() {
+		stopStats();
+		statsPrev = null;
+		stats = {w: 0, h: 0, fps: 0, kbps: 0, dropped: 0, total: 0, buf: 0};
+		elTech.innerHTML = "";
+		statsTimer = setInterval(sampleStats, 1000);
+	}
+
+	function stopStats() {
+		if (statsTimer) {
+			clearInterval(statsTimer);
+			statsTimer = null;
+		}
+		variants = null;
+		elTech.innerHTML = "";
+	}
+
+	// An ABR switch shows up here before the next sample tick.
+	video.addEventListener("resize", drawTech);
+
 	function play(entry) {
 		currentEntry = entry;
 		mode = "player";
@@ -813,11 +1086,13 @@
 			["circle",  "Stäng"]
 		]);
 		showOsd(true);
+		startStats();
 
 		SVT.resolve(entry.id).then(function (url) {
 			if (mode !== "player") {
 				return;
 			}
+			loadVariants(url);
 			return attach(url, entry);
 		}, function (err) {
 			stop();
@@ -885,6 +1160,7 @@
 
 	function stop() {
 		savePos();
+		stopStats();
 		try { video.pause(); } catch (e) { /* not started */ }
 		destroyHls();
 		video.removeAttribute("src");
@@ -1060,7 +1336,12 @@
 				["triangle", "F1", "Byt ljudspår"],
 				["l3", "F9", "Börja om"],
 				["r3", "F10", "Fyll skärmen / passa in"]
-			]) + "</div></div>";
+			]) + "</div>" +
+			// The full stream readout only exists while something is playing.
+			(elPlayer.hidden ? "" :
+				"<div><h3>Ström</h3><div id=\"help-stats\">" + statsHtml() +
+				"</div></div>") +
+			"</div>";
 	}
 
 	function toggleHelp() {

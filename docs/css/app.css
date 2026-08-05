@@ -391,18 +391,60 @@ body {
 	opacity: 0;
 	-webkit-transition: opacity 160ms ease-out;
 	transition: opacity 160ms ease-out;
+	/* Only the bottom half is a fixed-height scrim; the top one is drawn by
+	   .osd-top so that it always ends where the text ends, however many
+	   lines the description wraps to. */
 	background:
-		-webkit-linear-gradient(top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0) 22%, rgba(0,0,0,0) 55%, rgba(0,0,0,0.85) 100%);
+		-webkit-linear-gradient(top, rgba(0,0,0,0) 55%, rgba(0,0,0,0.85) 100%);
 	background:
-		linear-gradient(to bottom, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0) 22%, rgba(0,0,0,0) 55%, rgba(0,0,0,0.85) 100%);
+		linear-gradient(to bottom, rgba(0,0,0,0) 55%, rgba(0,0,0,0.85) 100%);
 }
 #osd.on { opacity: 1; }
 
+/*
+ * Text over video is the one place the palette cannot be trusted: a white
+ * title on a snow report is invisible. Three layers deal with it, cheapest
+ * first -- a scrim sized to the text, a shadow that survives a bright frame
+ * behind a descender, and a thin outline where the engine supports painting
+ * the stroke under the fill.
+ */
 .osd-top {
-	padding: var(--safe-y) var(--safe-x) 0;
+	padding: var(--safe-y) var(--safe-x) 2.2rem;
+	background:
+		-webkit-linear-gradient(top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.72) 45%, rgba(0,0,0,0) 100%);
+	background:
+		linear-gradient(to bottom, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.72) 45%, rgba(0,0,0,0) 100%);
 }
-.osd-top h1 { font-size: 2.1rem; font-weight: 700; }
-.osd-top p { color: var(--dim); font-size: 1.05rem; margin-top: 0.3rem; max-width: 70ch; }
+.osd-head {
+	max-width: 70ch;
+	text-shadow:
+		0 1px 2px rgba(0,0,0,0.95),
+		0 2px 14px rgba(0,0,0,0.75);
+	-webkit-font-smoothing: antialiased;
+}
+.osd-top h1 {
+	font-size: 2.1rem;
+	font-weight: 700;
+	line-height: 1.15;
+}
+.osd-top p {
+	/* --dim is a panel colour: on video it needs to come up to near-white. */
+	color: #e3e7e7;
+	font-size: 1.05rem;
+	margin-top: 0.35rem;
+	line-height: 1.4;
+	/* Four lines is all a viewer reads at 3 m; the rest is noise over video. */
+	display: -webkit-box;
+	-webkit-line-clamp: 4;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+}
+@supports (paint-order: stroke) {
+	.osd-head {
+		paint-order: stroke fill;
+		-webkit-text-stroke: 3px rgba(0,0,0,0.55);
+	}
+}
 
 .osd-bottom {
 	position: absolute;
@@ -444,16 +486,38 @@ body {
 	display: flex;
 	justify-content: space-between;
 	font-size: 1.05rem;
-	color: var(--dim);
+	color: #d3d8d8;
 	font-variant-numeric: tabular-nums;
 }
-#osd-hints {
+#osd-state, .times, .osd-foot {
+	text-shadow: 0 1px 2px rgba(0,0,0,0.9);
+}
+.osd-foot {
 	margin-top: 0.8rem;
+	display: -webkit-box;
+	display: flex;
+	-webkit-box-align: center;
+	align-items: center;
+	-webkit-box-pack: justify;
+	justify-content: space-between;
+	gap: 1.6rem;
+}
+#osd-hints {
 	font-size: 0.95rem;
-	color: var(--faint);
+	color: #9aa1a1;
+	display: -webkit-box;
 	display: flex;
 	gap: 1.6rem;
 }
+/* Stream facts. Deliberately quiet: it is reference, not chrome. */
+#osd-tech {
+	font-size: 0.9rem;
+	color: #9aa1a1;
+	white-space: nowrap;
+	font-variant-numeric: tabular-nums;
+	letter-spacing: 0.01em;
+}
+#osd-tech .warn { color: #e6b455; }
 #osd-hints b {
 	color: var(--dim);
 	font-weight: 600;
@@ -501,6 +565,16 @@ body {
 #help td:nth-child(2) { color: var(--faint); white-space: nowrap; }
 #help .cols { display: flex; gap: 5rem; flex-wrap: wrap; }
 #help h3 { font-size: 1.2rem; color: var(--dim); margin-bottom: 0.6rem; font-weight: 600; }
+
+#help-stats table { font-variant-numeric: tabular-nums; }
+#help-stats td:first-child {
+	color: var(--faint);
+	white-space: nowrap;
+	line-height: inherit;
+	padding-right: 1.6rem;
+}
+#help-stats td:nth-child(2) { color: var(--text); white-space: normal; }
+#help-stats .warn { color: #e6b455; }
 
 #toast {
 	position: fixed;
