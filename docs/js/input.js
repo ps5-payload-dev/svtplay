@@ -184,7 +184,7 @@ var Input = (function () {
 	 * on the third card of the next one rather than on whatever happens to be
 	 * closest as the crow flies.
 	 */
-	function move(dir, scope) {
+	function move(dir, scope, nowrap) {
 		var items = all(scope);
 		var cur = current(scope);
 		if (!items.length) {
@@ -236,8 +236,10 @@ var Input = (function () {
 
 		// Nothing that way. In a wrapping grid, running off the end of a row
 		// should continue on the next one rather than dead-end, so fall back to
-		// document order for left/right.
-		if (!best && (dir === "left" || dir === "right")) {
+		// document order for left/right. Callers that need to know they have
+		// hit a real edge -- Left out of the listing and into the nav rail --
+		// pass nowrap and get null instead.
+		if (!best && !nowrap && (dir === "left" || dir === "right")) {
 			var i = items.indexOf(cur) + (dir === "right" ? 1 : -1);
 			best = items[i] || null;
 		}

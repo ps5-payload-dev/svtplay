@@ -201,7 +201,14 @@
 		}
 
 		// The cursor is the only thing that decides whether the menu holds it.
-		railLock = !!el.getAttribute("data-rail");
+		var rail = el.getAttribute("data-rail");
+		railLock = !!rail;
+
+		// Focusing a rail item is what opens it: the listing on the right
+		// follows the cursor down the menu with no Cross needed.
+		if (rail) {
+			activateRail(rail);
+		}
 
 		// Moving the cursor is the only kind of scrolling there is here, so it
 		// is also when new cards come into view and want their artwork.
@@ -391,6 +398,83 @@
 		return false;
 	}
 
+	// Is the cursor in the menu right now? Asked of the DOM rather than kept in
+	// a flag, because railLock answers a different question -- whether a listing
+	// that arrives late is allowed to take the cursor.
+	function inRail() {
+		var el = Input.current();
+		return !!(el && el.getAttribute && el.getAttribute("data-rail"));
+	}
+
+	// Which rail item the current stack belongs to. Read from the root frame,
+	// so drilling into a show from Program A-Ö keeps Program A-Ö lit rather
+	// than falling back to Start.
+	function currentRoot() {
+		return stack.length ? railIdOf(stack[0].view) : "start";
+	}
+
+	function focusRail() {
+		Input.focus(elRail.querySelector(".rail-item.current") ||
+			elRail.querySelector(".rail-item"));
+	}
+
+	/*
+	 * Opening on focus means a held D-pad would fire a request per item on the
+	 * way past, so wait for the cursor to settle first. Anything that hands the
+	 * cursor to the listing flushes the pending load, so Right never lands in
+	 * the previous view's cards.
+	 */
+	var RAIL_DELAY = 220;
+	var railTimer = null;
+	var railPending = null;
+
+	function activateRail(id) {
+		if (railTimer) {
+			clearTimeout(railTimer);
+			railTimer = null;
+		}
+		railPending = null;
+
+		// Already showing it -- including the redraw that render() itself does,
+		// which re-focuses this very item and would otherwise loop.
+		if (!id || id === currentRoot()) {
+			return;
+		}
+
+		railPending = id;
+		railTimer = setTimeout(function () {
+			railTimer = null;
+			openRail(railPending);
+		}, RAIL_DELAY);
+	}
+
+	function flushRail() {
+		if (!railTimer) {
+			return;
+		}
+		clearTimeout(railTimer);
+		railTimer = null;
+		openRail(railPending);
+	}
+
+	function openRail(id) {
+		railPending = null;
+		if (!id || id === currentRoot()) {
+			return;
+		}
+		stack = [frameOf(id === "programs" ? "letters" : id, null, null)];
+		render(stack[0]);
+	}
+
+	// Hand the cursor from the menu to the listing. railLock is dropped first
+	// so that a view still loading places the cursor when it arrives.
+	function enterContent() {
+		flushRail();
+		railLock = false;
+		var top = stack[stack.length - 1];
+		Input.focusIndex(top ? top.focus : 0, SCOPE);
+	}
+
 	/* -------------------------------------------------------------- views */
 
 	function crumb(parts) {
@@ -417,23 +501,26 @@
 		if (stack.length < 2) {
 			// Nothing to pop: treat Circle as "take me to the menu", landing on
 			// the entry this view belongs to rather than on the first one.
-			Input.focus(elRail.querySelector(".rail-item.current") ||
-				elRail.querySelector(".rail-item"));
+			var top = stack[stack.length - 1];
+			if (top) {
+				top.focus = Math.max(0, Input.indexOfFocused(SCOPE));
+			}
+			focusRail();
 			return;
 		}
 		stack.pop();
 		render(stack[stack.length - 1]);
 	}
 
-	function rootView(frame) {
-		// Which rail entry should light up for this frame.
-		if (frame.view === "programs" || frame.view === "letters") {
+	// Which rail entry a view belongs under.
+	function railIdOf(view) {
+		if (view === "programs" || view === "letters") {
 			return "programs";
 		}
-		if (frame.view === "genre" || frame.view === "genres") {
+		if (view === "genre" || view === "genres") {
 			return "genres";
 		}
-		if (frame.view === "channels") {
+		if (view === "channels") {
 			return "channels";
 		}
 		return "start";
@@ -441,7 +528,7 @@
 
 	function render(frame) {
 		var my = ++token;
-		railLock = drawRail(rootView(frame));
+		railLock = drawRail(currentRoot());
 		gridEl = null;
 		entries = [];
 		busy(true);
@@ -615,14 +702,10 @@
 			return;
 		}
 
-		var rail = el.getAttribute("data-rail");
-		if (rail) {
-			stack = [frameOf(
-				rail === "programs" ? "letters" : rail,
-				null,
-				null
-			)];
-			render(stack[0]);
+		// The view behind a rail item is already on screen -- focusing the item
+		// loaded it -- so Cross is simply "into the listing", same as Right.
+		if (el.getAttribute("data-rail")) {
+			enterContent();
 			return;
 		}
 
@@ -1021,10 +1104,27 @@
 
 	function browseKey(code) {
 		switch (code) {
-		case K.LEFT:  Input.move("left"); break;
-		case K.RIGHT: Input.move("right"); break;
-		case K.UP:    Input.move("up"); break;
-		case K.DOWN:  Input.move("down"); break;
+		case K.LEFT:
+			// Left off the edge of the listing goes to the menu -- to the item
+			// this view belongs to, not to whichever one happens to be level
+			// with the card. Remember where we were so Right comes back.
+			if (!inRail() && !Input.move("left", SCOPE, true)) {
+				var top = stack[stack.length - 1];
+				if (top) {
+					top.focus = Math.max(0, Input.indexOfFocused(SCOPE));
+				}
+				focusRail();
+			}
+			break;
+		case K.RIGHT:
+			if (inRail()) {
+				enterContent();
+			} else {
+				Input.move("right", SCOPE);
+			}
+			break;
+		case K.UP:    Input.move("up", inRail() ? elRail : SCOPE); break;
+		case K.DOWN:  Input.move("down", inRail() ? elRail : SCOPE); break;
 		case K.CROSS: openFocused(); break;
 		case K.CIRCLE: back(); break;
 		case K.L1:    Input.page(-CHUNK / 2, SCOPE); break;
@@ -1097,4 +1197,9 @@
 	browseHints();
 	stack = [frameOf("start", null, null)];
 	render(stack[0]);
+
+	// The rail exists as soon as render() has drawn it. Put the cursor on the
+	// first item: that sets railLock, so Start fills the right-hand side as its
+	// shelves arrive but leaves the cursor in the menu.
+	Input.focus(elRail.querySelector(".rail-item"));
 }());
