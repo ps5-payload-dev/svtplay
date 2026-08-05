@@ -85,7 +85,7 @@ body {
 #crumb i { color: var(--faint); font-style: normal; margin: 0 0.5em; }
 
 #clock {
-	font-size: 1.2rem;
+	font-size: 1.6rem;
 	color: var(--faint);
 	font-variant-numeric: tabular-nums;
 	color: white;
