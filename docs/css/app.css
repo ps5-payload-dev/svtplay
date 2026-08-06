@@ -388,7 +388,6 @@ body {
     padding: 1.5rem 2rem;
     background: rgba(22,25,26,0.92);
     border: 1px solid var(--line);
-    border-left: 4px solid var(--green);
     border-radius: var(--radius);
     box-shadow: 0 1.2rem 3rem rgba(0,0,0,0.55);
     -webkit-font-smoothing: antialiased;
@@ -513,7 +512,7 @@ body {
 
 #spinner {
     position: absolute;
-    top: 50%; left: 50%;
+    top: 48px; left: 48px;
     margin: -24px 0 0 -24px;
     width: 48px; height: 48px;
 }
