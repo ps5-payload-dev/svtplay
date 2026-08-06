@@ -1,62 +1,62 @@
 <!DOCTYPE html>
 <html lang="sv">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SVT Play</title>
-<link rel="stylesheet" href="css/app.css">
-</head>
-<body>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>SVT Play</title>
+    <link rel="stylesheet" href="css/app.css">
+  </head>
+  <body>
 
-<div id="browser">
+    <!-- Browser -->
+    <div id="browser">
+      <header id="topbar">
+	<img id="logo"/>
+	<div id="crumb"></div>
+	<div id="clock"></div>
+      </header>
 
-	<header id="topbar">
-		<img id="logo"/>
-		<div id="crumb"></div>
-		<div id="clock"></div>
-	</header>
+      <div id="loadbar"><i></i></div>
 
-	<div id="loadbar"><i></i></div>
+      <div id="main">
+	<nav id="rail"></nav>
+	<section id="content"></section>
+      </div>
+    </div>
 
-	<div id="main">
-		<nav id="rail"></nav>
-		<section id="content"></section>
+    <!-- Playback -->
+    <div id="player" hidden>
+      <video id="video" playsinline webkit-playsinline></video>
+
+      <div id="osd">
+	<div class="osd-top">
+	  <div class="osd-head">
+	    <h1 id="osd-title"></h1>
+	    <p id="osd-desc"></p>
+	  </div>
 	</div>
-</div>
-
-<!-- Playback ------------------------------------------------------------ -->
-<div id="player" hidden>
-	<video id="video" playsinline webkit-playsinline></video>
-
-	<div id="osd">
-		<div class="osd-top">
-			<div class="osd-head">
-				<h1 id="osd-title"></h1>
-				<p id="osd-desc"></p>
-			</div>
-		</div>
-		<div class="osd-bottom">
-			<div id="osd-state"></div>
-			<div class="bar"><i id="osd-fill"></i><b id="osd-head"></b></div>
-			<div class="times">
-				<span id="osd-pos">0:00</span>
-				<span id="osd-dur">--:--</span>
-			</div>
-			<div class="osd-foot">
-				<div id="osd-tech"></div>
-			</div>
-		</div>
+	<div class="osd-bottom">
+	  <div id="osd-state"></div>
+	  <div class="bar"><i id="osd-fill"></i><b id="osd-head"></b></div>
+	  <div class="times">
+	    <span id="osd-pos">0:00</span>
+	    <span id="osd-dur">--:--</span>
+	  </div>
+	  <div class="osd-foot">
+	    <div id="osd-tech"></div>
+	  </div>
 	</div>
+      </div>
 
-	<div id="spinner" hidden><i></i></div>
-</div>
+      <div id="spinner" hidden><i></i></div>
+    </div>
 
-<!-- Overlays ------------------------------------------------------------ -->
-<div id="help" hidden></div>
-<div id="toast" hidden></div>
+    <!-- Overlays -->
+    <div id="help" hidden></div>
+    <div id="toast" hidden></div>
 
-<script src="js/svt.js"></script>
-<script src="js/input.js"></script>
-<script src="js/app.js"></script>
-</body>
+    <script src="js/svt.js"></script>
+    <script src="js/input.js"></script>
+    <script src="js/app.js"></script>
+  </body>
 </html>
