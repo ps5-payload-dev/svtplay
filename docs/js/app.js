@@ -811,6 +811,7 @@
 
 	var elTech = document.getElementById("osd-tech");
 	var variants = null;
+	var manifestSubs = 0;
 	var statsTimer = null;
 	var statsPrev = null;
 	var stats = {w: 0, h: 0, fps: 0, kbps: 0, dropped: 0, total: 0, buf: 0};
@@ -819,7 +820,15 @@
 		var lines = String(text).split(/\r?\n/);
 		var out = [];
 		var i, m, a, v;
+		manifestSubs = 0;
 		for (i = 0; i < lines.length; i++) {
+			// Worth counting even though nothing uses them: it is the fastest
+			// way to tell a manifest that carries subtitles from one that does
+			// not, which is the whole question when text goes missing.
+			if (lines[i].indexOf("#EXT-X-MEDIA:") === 0 &&
+					lines[i].indexOf("TYPE=SUBTITLES") > 0) {
+				manifestSubs++;
+			}
 			if (lines[i].indexOf("#EXT-X-STREAM-INF:") !== 0) {
 				continue;
 			}
@@ -1008,6 +1017,16 @@
 		rows.push(["Bildfrekvens", fpsText() || "–"]);
 		rows.push(["Bithastighet", bitrateText() || "–"]);
 		if (v && v.codecs) { rows.push(["Kodek", esc(codecName(v.codecs))]); }
+		// Three numbers, because "no subtitles" has three different causes:
+		// none offered, offered but not fetched, fetched but not rendered.
+		var shown = activeTrack();
+		rows.push(["Textspår", subtitleTracks().length +
+			" (i manifest: " + manifestSubs + ", separata: " + subUrls.length + ")"]);
+		rows.push(["Aktivt textspår", shown
+			? esc(shown.label || shown.language || "?") + ", " +
+				(shown.cues ? shown.cues.length + " repliker" :
+					'<span class="warn">inga repliker inlästa</span>')
+			: "av"]);
 		rows.push(["Buffert", stats.buf ? stats.buf.toFixed(1) + " s" : "–"]);
 		rows.push(["Bilder", stats.total
 			? stats.total + " avkodade, " +
@@ -1062,11 +1081,86 @@
 			statsTimer = null;
 		}
 		variants = null;
+		manifestSubs = 0;
 		elTech.innerHTML = "";
 	}
 
 	// An ABR switch shows up here before the next sample tick.
 	video.addEventListener("resize", drawTech);
+
+	/* ----------------------------------------------------------- subtitles
+	 *
+	 * A cross-origin <track src> is blocked unless the video element carries
+	 * crossorigin="anonymous", and setting that would make every media segment
+	 * subject to CORS too -- a good way to lose playback entirely. So the file
+	 * is fetched here instead and handed to the element as a blob, which is
+	 * same-origin by definition. WebKit then parses the WebVTT itself, keeping
+	 * cue positioning and ::cue styling intact.
+	 */
+
+	var subUrls = [];
+
+	function srtToVtt(text) {
+		return "WEBVTT\n\n" + String(text)
+			.replace(/^\uFEFF/, "")
+			.replace(/\r\n?/g, "\n")
+			// 00:00:01,000 --> 00:00:04,000
+			.replace(/(\d\d:\d\d:\d\d),(\d{3})/g, "$1.$2");
+	}
+
+	function addSubtitle(sub, first) {
+		return fetch(sub.url, {credentials: "omit"}).then(function (r) {
+			if (!r.ok) {
+				throw new Error("HTTP " + r.status);
+			}
+			return r.text();
+		}).then(function (text) {
+			var vtt = sub.srt || text.indexOf("WEBVTT") !== 0
+				? srtToVtt(text)
+				: text;
+			var url = URL.createObjectURL(new Blob([vtt], {type: "text/vtt"}));
+			var track = document.createElement("track");
+			subUrls.push(url);
+			track.kind = "subtitles";
+			track.label = sub.label;
+			track.srclang = sub.language;
+			track.src = url;
+			track["default"] = false;
+			video.appendChild(track);
+			// The element only exposes .track once it is in the document, and
+			// "disabled" keeps it out of the way until the viewer asks for it.
+			if (track.track) {
+				track.track.mode = "disabled";
+			}
+			return true;
+		});
+	}
+
+	function loadSubtitles(list) {
+		clearSubtitles();
+		if (!list || !list.length || !window.fetch || !window.URL ||
+				!window.URL.createObjectURL) {
+			return;
+		}
+		list.forEach(function (sub, i) {
+			addSubtitle(sub, i === 0)["catch"](function (err) {
+				if (window.console) {
+					console.log("subtitle " + sub.url + ": " + err.message);
+				}
+			});
+		});
+	}
+
+	function clearSubtitles() {
+		var nodes = video.querySelectorAll("track");
+		for (var i = 0; i < nodes.length; i++) {
+			video.removeChild(nodes[i]);
+		}
+		subUrls.forEach(function (u) {
+			try { URL.revokeObjectURL(u); } catch (e) { /* already gone */ }
+		});
+		subUrls = [];
+	}
 
 	function play(entry) {
 		currentEntry = entry;
@@ -1088,12 +1182,13 @@
 		showOsd(true);
 		startStats();
 
-		SVT.resolve(entry.id).then(function (url) {
+		SVT.resolve(entry.id).then(function (stream) {
 			if (mode !== "player") {
 				return;
 			}
-			loadVariants(url);
-			return attach(url, entry);
+			loadVariants(stream.url);
+			loadSubtitles(stream.subtitles);
+			return attach(stream.url, entry);
 		}, function (err) {
 			stop();
 			toast((err && err.message) || "Kunde inte starta uppspelningen", true);
@@ -1161,6 +1256,7 @@
 	function stop() {
 		savePos();
 		stopStats();
+		clearSubtitles();
 		try { video.pause(); } catch (e) { /* not started */ }
 		destroyHls();
 		video.removeAttribute("src");
@@ -1230,9 +1326,32 @@
 		}, 350);
 	}
 
+	function subtitleTracks() {
+		var out = [];
+		var t = video.textTracks;
+		var i;
+		for (i = 0; t && i < t.length; i++) {
+			if (t[i].kind === "subtitles" || t[i].kind === "captions" ||
+					!t[i].kind) {
+				out.push(t[i]);
+			}
+		}
+		return out;
+	}
+
+	function activeTrack() {
+		var tracks = subtitleTracks();
+		for (var i = 0; i < tracks.length; i++) {
+			if (tracks[i].mode === "showing") {
+				return tracks[i];
+			}
+		}
+		return null;
+	}
+
 	function cycleTextTracks() {
-		var tracks = video.textTracks;
-		if (!tracks || !tracks.length) {
+		var tracks = subtitleTracks();
+		if (!tracks.length) {
 			toast("Inga textspår i den här strömmen");
 			return;
 		}
@@ -1251,7 +1370,19 @@
 			return;
 		}
 		tracks[next].mode = "showing";
-		if (hls) { hls.subtitleTrack = next; }
+		// A rendition hls.js owns has to be selected on the hls side too or no
+		// cues are ever parsed into it. Match by label rather than by index:
+		// the sidecar tracks share the same textTracks list and would otherwise
+		// shift every hls index by however many of them were added.
+		if (hls && hls.subtitleTracks && hls.subtitleTracks.length) {
+			var h = -1;
+			for (i = 0; i < hls.subtitleTracks.length; i++) {
+				if ((hls.subtitleTracks[i].name || "") === tracks[next].label) {
+					h = i;
+				}
+			}
+			hls.subtitleTrack = h;
+		}
 		toast("Text: " + (tracks[next].label || tracks[next].language || next));
 	}
 

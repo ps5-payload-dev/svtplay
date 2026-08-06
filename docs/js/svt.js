@@ -552,6 +552,34 @@ var SVT = (function () {
 			});
 	}
 
+	// Subtitles do not travel inside SVT's HLS manifests: the video API lists
+	// them separately as standalone files, so nothing the media element or
+	// hls.js does on its own will ever surface them.
+	var SUB_FORMATS = ["webvtt", "vtt", "websrt", "srt"];
+
+	function subtitleList(video) {
+		var refs = video.subtitleReferences || [];
+		if (!refs.length && video.variants && video.variants["default"]) {
+			refs = video.variants["default"].subtitleReferences || [];
+		}
+		return refs.filter(function (ref) {
+			var f = String(ref.format || "").toLowerCase();
+			return ref.url && (SUB_FORMATS.indexOf(f) >= 0 ||
+				/\.(vtt|srt)(\?|$)/i.test(ref.url));
+		}).map(function (ref, i) {
+			var f = String(ref.format || "").toLowerCase();
+			return {
+				url: ref.url,
+				srt: f.indexOf("srt") >= 0 || /\.srt(\?|$)/i.test(ref.url),
+				language: ref.spokenLanguage || ref.language || "sv",
+				// SVT labels these inconsistently; fall back to a number so two
+				// unnamed tracks are still tellable apart.
+				label: ref.label || ref.name || ref.title ||
+					(i === 0 ? "Svenska" : "Text " + (i + 1))
+			};
+		});
+	}
+
 	function resolveStream(svtId) {
 		return fetch(VIDEO_API + svtId, {headers: {Accept: "application/json"}})
 			.then(function (res) {
@@ -607,7 +635,11 @@ var SVT = (function () {
 					if (window.console) {
 						console.log("playing " + best.format + ": " + url);
 					}
-					return url;
+					return {
+						url: url,
+						format: best.format,
+						subtitles: subtitleList(video)
+					};
 				});
 			});
 	}
