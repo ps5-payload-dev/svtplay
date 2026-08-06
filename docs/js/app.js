@@ -798,15 +798,28 @@
     var elTech = document.getElementById("osd-tech");
     var variants = null;
     var manifestSubs = 0;
+    // Audio renditions declared with EXT-X-MEDIA. Null means the manifest was
+    // never read (CORS, offline); an empty list means the audio is muxed into
+    // the variant streams, which is the only shape WebKit HLS handles here.
+    var audioTracks = null;
     var statsTimer = null;
     var statsPrev = null;
     var stats = {w: 0, h: 0, fps: 0, kbps: 0, dropped: 0, total: 0, buf: 0};
+
+    function attr(line, name) {
+	var m = new RegExp("[,:]" + name + "=(\"[^\"]*\"|[^,]*)").exec(line);
+	if (!m) {
+	    return "";
+	}
+	return m[1].charAt(0) === '"' ? m[1].slice(1, -1) : m[1];
+    }
 
     function parseMaster(text) {
 	var lines = String(text).split(/\r?\n/);
 	var out = [];
 	var i, m, a, v;
 	manifestSubs = 0;
+	audioTracks = [];
 	for (i = 0; i < lines.length; i++) {
 	    // Worth counting even though nothing uses them: it is the fastest
 	    // way to tell a manifest that carries subtitles from one that does
@@ -814,6 +827,20 @@
 	    if (lines[i].indexOf("#EXT-X-MEDIA:") === 0 &&
 		lines[i].indexOf("TYPE=SUBTITLES") > 0) {
 		manifestSubs++;
+	    }
+	    // An audio rendition with a URI of its own is audio that does not
+	    // travel inside the video segments, and is what has to be fetched
+	    // and mixed in separately.
+	    if (lines[i].indexOf("#EXT-X-MEDIA:") === 0 &&
+		lines[i].indexOf("TYPE=AUDIO") > 0) {
+		audioTracks.push({
+		    group: attr(lines[i], "GROUP-ID"),
+		    name: attr(lines[i], "NAME"),
+		    language: attr(lines[i], "LANGUAGE"),
+		    channels: attr(lines[i], "CHANNELS"),
+		    isDefault: attr(lines[i], "DEFAULT") === "YES",
+		    uri: attr(lines[i], "URI")
+		});
 	    }
 	    if (lines[i].indexOf("#EXT-X-STREAM-INF:") !== 0) {
 		continue;
@@ -830,23 +857,45 @@
 	    if (m) { v.codecs = m[1]; }
 	    m = /FRAME-RATE=([\d.]+)/.exec(a);
 	    if (m) { v.fps = parseFloat(m[1]); }
+	    v.audioGroup = attr("," + a, "AUDIO");
 	    out.push(v);
 	}
 	return out.length ? out : null;
     }
 
-    // The manifest is fetched a second time purely for its metadata. It is in
-    // the CDN cache by now, and a CORS refusal is not worth reporting.
-    function loadVariants(url) {
+    // The manifest is fetched a second time for its metadata, and now also to
+    // choose a playback engine before anything is attached. It is in the CDN
+    // cache by now, and a refusal is not worth reporting: the answer is then
+    // simply "unknown", and attach() keeps the old behaviour.
+    //
+    // Never rejects.
+    function loadMaster(url) {
 	variants = null;
+	audioTracks = null;
 	if (!window.fetch) {
-	    return;
+	    return Promise.resolve();
 	}
-	fetch(url, {credentials: "omit"}).then(function (r) {
+	return fetch(url, {credentials: "omit"}).then(function (r) {
 	    return r.ok ? r.text() : "";
 	}).then(function (t) {
-	    variants = parseMaster(t);
+	    if (t) {
+		variants = parseMaster(t);
+	    }
 	})["catch"](function () { /* measured values still work */ });
+    }
+
+    // True when the audio lives in playlists of its own rather than inside the
+    // video segments. WebKit's built-in HLS on this console loads the video
+    // renditions and silently ignores the alternate audio group, which is a
+    // picture and no sound; hls.js fetches both and feeds them to MSE itself.
+    //
+    // Null when the manifest could not be read, so the caller can tell "muxed"
+    // from "no idea".
+    function hasSeparateAudio() {
+	if (!audioTracks) {
+	    return null;
+	}
+	return audioTracks.some(function (t) { return !!t.uri; });
     }
 
     function codecName(s) {
@@ -1021,6 +1070,22 @@
 		    pct.toFixed(1) + " %)</span>"
 		    : "0 tappade")
 		   : "–"]);
+	// The line that tells a silent stream apart from a broken one: where
+	// the audio is declared, and whether the engine playing it can reach
+	// audio in that position at all.
+	var separate = hasSeparateAudio();
+	rows.push(["Ljudspår", audioTracks === null
+		   ? "manifest ej läst"
+		   : (audioTracks.length
+		      ? audioTracks.length + (separate
+					      ? " separata: "
+					      : " i manifest: ") +
+		      esc(audioTracks.map(function (t) {
+			  return (t.name || t.language || "?") +
+			      (t.channels ? " (" + t.channels + " kan.)" : "");
+		      }).join(", "))
+		      : "muxat i videoströmmen")]);
+
 	if (hls) {
 	    rows.push(["Uppspelning", "hls.js " + (window.Hls.version || "")]);
 	    if (hls.levels && hls.levels.length) {
@@ -1032,7 +1097,10 @@
 			   (hls.bandwidthEstimate / 1e6).toFixed(1) + " Mbit/s"]);
 	    }
 	} else {
-	    rows.push(["Uppspelning", "WebKit HLS"]);
+	    rows.push(["Uppspelning", separate === true
+		       ? '<span class="warn">WebKit HLS (separat ljud – ' +
+		       "sannolikt tyst)</span>"
+		       : "WebKit HLS"]);
 	    if (variants) {
 		rows.push(["Renditioner", String(variants.length)]);
 	    }
@@ -1067,6 +1135,7 @@
 	    statsTimer = null;
 	}
 	variants = null;
+	audioTracks = null;
 	manifestSubs = 0;
 	elTech.innerHTML = "";
     }
@@ -1163,9 +1232,15 @@
 	    if (mode !== "player") {
 		return;
 	    }
-	    loadVariants(stream.url);
 	    loadSubtitles(stream.subtitles);
-	    return attach(stream.url, entry);
+	    // The engine is picked from what the manifest turns out to hold,
+	    // so this one has to finish first.
+	    return loadMaster(stream.url).then(function () {
+		if (mode !== "player") {
+		    return;
+		}
+		return attach(stream.url, entry);
+	    });
 	}, function (err) {
 	    stop();
 	    toast((err && err.message) || "Kunde inte starta uppspelningen", true);
@@ -1189,7 +1264,7 @@
 	    }
 	}
 
-	if (nativeHls()) {
+	function attachNative() {
 	    // { once: true } is silently ignored by some older WebKit builds,
 	    // which would re-seek on every metadata event.
 	    var onMeta = function () {
@@ -1199,25 +1274,55 @@
 	    video.src = url;
 	    video.addEventListener("loadedmetadata", onMeta);
 	    video.load();
+	}
+
+	function attachHlsJs() {
+	    return loadHlsJs().then(function () {
+		if (!window.Hls || !window.Hls.isSupported()) {
+		    throw new Error("Ingen HLS-uppspelning i den här webbläsaren");
+		}
+		destroyHls();
+		hls = new window.Hls({
+		    enableWorker: true,
+		    // A console has far less headroom than a desktop; holding
+		    // half an hour of played-out segments is what turns a long
+		    // programme into a stall.
+		    backBufferLength: 30
+		});
+		hls.on(window.Hls.Events.MANIFEST_PARSED, started);
+		hls.on(window.Hls.Events.ERROR, function (evt, data) {
+		    if (data.fatal) {
+			toast("Strömfel: " + data.details, true);
+			stop();
+		    }
+		});
+		hls.loadSource(url);
+		hls.attachMedia(video);
+	    });
+	}
+
+	// WebKit's own HLS is the cheaper path and the one the console decodes
+	// in hardware, so it stays the default. It is only stepped around for
+	// the manifests it gets wrong: those whose audio sits in renditions of
+	// its own, which it loads no sound for at all.
+	var separate = hasSeparateAudio();
+	if (nativeHls() && separate !== true) {
+	    attachNative();
 	    return;
 	}
 
-	return loadHlsJs().then(function () {
-	    if (!window.Hls || !window.Hls.isSupported()) {
-		throw new Error("Ingen HLS-uppspelning i den här webbläsaren");
-	    }
-	    destroyHls();
-	    hls = new window.Hls({enableWorker: true});
-	    hls.on(window.Hls.Events.MANIFEST_PARSED, started);
-	    hls.on(window.Hls.Events.ERROR, function (evt, data) {
-		if (data.fatal) {
-		    toast("Strömfel: " + data.details, true);
-		    stop();
+	return attachHlsJs()["catch"](function (err) {
+	    // Better a stream with no sound than no stream: if hls.js cannot
+	    // be had, hand the manifest back to WebKit.
+	    if (nativeHls()) {
+		if (window.console) {
+		    console.log("hls.js unavailable, falling back to WebKit: " +
+				err.message);
 		}
-	    });
-	    hls.loadSource(url);
-	    hls.attachMedia(video);
-	})["catch"](function (err) {
+		destroyHls();
+		attachNative();
+		return;
+	    }
 	    toast(err.message, true);
 	    stop();
 	});
