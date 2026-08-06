@@ -33,7 +33,7 @@ all: $(ELF)
 $(ELF): install.c
 	$(CC) $(CFLAGS) $(LDADD) -o $@ $^
 
-install.c: sce_sys/param.json sce_sys/icon0.png
+install.c: sce_sys/param.json sce_sys/icon0.png sce_sys/pic1.png
 
 clean:
 	rm -f $(ELF)

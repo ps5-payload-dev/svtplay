@@ -54,6 +54,7 @@ int sceAppInstUtilAppUnInstall(const char*);
 
 INCASSET(param, "sce_sys/param.json");
 INCASSET(icon0, "sce_sys/icon0.png");
+INCASSET(pic1, "sce_sys/pic1.png");
 
 
 static int
@@ -155,6 +156,10 @@ main(int argc, char *argv[]) {
     return -1;
   }
   if(install_file("/user/app/"TITLE_ID"/sce_sys/icon0.png", icon0, icon0_size)) {
+    perror("install_file");
+    return -1;
+  }
+  if(install_file("/user/app/"TITLE_ID"/sce_sys/pic1.png", pic1, pic1_size)) {
     perror("install_file");
     return -1;
   }
