@@ -360,31 +360,51 @@ body {
 #osd.on { opacity: 1; }
 
 /*
- * Text over video is the one place the palette cannot be trusted: a white
- * title on a snow report is invisible. Three layers deal with it, cheapest
- * first -- a scrim sized to the text, a shadow that survives a bright frame
- * behind a descender, and a thin outline where the engine supports painting
- * the stroke under the fill.
+ * The title card sits dead centre for as long as the OSD is up -- start,
+ * pause, seek, track change -- and fades with it.
+ *
+ * Text over video is the one place the palette cannot be trusted -- a white
+ * title on a snow report is invisible -- and an opaque panel settles that far
+ * better than scrims and text strokes ever did. It borrows the toast idiom:
+ * surface fill, hairline border, green edge.
  */
 .osd-top {
-    padding: var(--safe-y) var(--safe-x) 2.2rem;
-    background:
-	-webkit-linear-gradient(top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.72) 45%, rgba(0,0,0,0) 100%);
-    background:
-	linear-gradient(to bottom, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.72) 45%, rgba(0,0,0,0) 100%);
+    position: absolute;
+    inset: 0;
+    top: 0; left: 0; right: 0; bottom: 0;
+    padding: var(--safe-y) var(--safe-x);
+    display: -webkit-box;
+    display: flex;
+    -webkit-box-align: center;
+    align-items: center;
+    -webkit-box-pack: center;
+    justify-content: center;
 }
 .osd-head {
+    /* A floor as well as a ceiling: plenty of entries carry no description at
+       all, and a lone title should still read as a card. */
+    min-width: 34ch;
     max-width: 70ch;
-    text-shadow:
-	0 1px 2px rgba(0,0,0,0.95),
-	0 2px 14px rgba(0,0,0,0.75);
+    padding: 1.5rem 2rem;
+    background: rgba(22,25,26,0.92);
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--green);
+    border-radius: var(--radius);
+    box-shadow: 0 1.2rem 3rem rgba(0,0,0,0.55);
     -webkit-font-smoothing: antialiased;
 }
 .osd-top h1 {
     font-size: 2.1rem;
     font-weight: 700;
     line-height: 1.15;
+    /* Episode titles run long enough to push the card into the seek bar. */
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
+/* Plenty of entries have no description; do not pad the card for one. */
+.osd-top p:empty { display: none; }
 .osd-top p {
     /* --dim is a panel colour: on video it needs to come up to near-white. */
     color: #e3e7e7;
@@ -397,25 +417,46 @@ body {
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
-@supports (paint-order: stroke) {
-    .osd-head {
-	paint-order: stroke fill;
-	-webkit-text-stroke: 3px rgba(0,0,0,0.55);
-    }
-}
-
 .osd-bottom {
     position: absolute;
     left: var(--safe-x);
     right: var(--safe-x);
     bottom: var(--safe-y);
 }
+/*
+ * Title left, state right, on one row.
+ *
+ * Deliberately not flexbox: an engine that falls back to the old -webkit-box
+ * model collapses a flexible child that also clips its text, which loses the
+ * title outright. A relative box with the state parked on the right needs
+ * nothing newer than CSS 2.1, and the padding keeps a long title from running
+ * underneath it.
+ */
+.osd-line {
+    position: relative;
+    padding-right: 15rem;
+    min-height: 2rem;
+}
+#osd-name {
+    font-size: 1.35rem;
+    font-weight: 600;
+    line-height: 2rem;
+    /* Long series titles are the rule, not the exception: clip, never wrap. */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
 #osd-state {
+    position: absolute;
+    right: 0;
+    top: 0;
     font-size: 1.1rem;
+    line-height: 2rem;
     color: var(--green);
     font-weight: 600;
-    height: 1.6em;
     letter-spacing: 0.02em;
+    white-space: nowrap;
+    text-align: right;
 }
 .bar {
     position: relative;
@@ -447,7 +488,7 @@ body {
     color: #d3d8d8;
     font-variant-numeric: tabular-nums;
 }
-#osd-state, .times, .osd-foot {
+#osd-name, #osd-state, .times, .osd-foot {
     text-shadow: 0 1px 2px rgba(0,0,0,0.9);
 }
 .osd-foot {

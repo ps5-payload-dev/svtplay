@@ -1240,11 +1240,17 @@
 	try { video.load(); } catch (e) { /* ignore */ }
 	elPlayer.hidden = true;
 	elSpinner.hidden = true;
+	elOsd.className = "";
 	currentEntry = null;
 	mode = "browse";
     }
 
+    // The bottom title is refreshed on every showing rather than written once
+    // in play(): whichever path put us in the player, the name on screen is
+    // the name of the thing playing.
     function showOsd(sticky) {
+	document.getElementById("osd-name").textContent =
+	    currentEntry ? currentEntry.name : "";
 	elOsd.className = "on";
 	if (osdTimer) {
 	    clearTimeout(osdTimer);
