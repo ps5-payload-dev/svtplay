@@ -9,7 +9,6 @@
     --faint:     #6b7273;
 
     --green:     #2ec27e;
-    --green-lo:  #1b7a4f;
     --live:      #e0322d;
 
     /* TV overscan: never put anything in the outer 3% of the panel. */
@@ -24,7 +23,6 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 html {
-    font-size: 16px;
     /* 1080p is the design target; scale with the panel so 4K stays legible. */
     font-size: calc(11px + 0.42vw);
 }
@@ -76,9 +74,8 @@ body {
 
 #clock {
     font-size: 1.6rem;
-    color: var(--faint);
+    color: var(--text);
     font-variant-numeric: tabular-nums;
-    color: white;
 }
 
 /* Two pixels of green while something is in flight; no spinner clutter. */
@@ -112,6 +109,7 @@ body {
 
 /* button glyphs */
 
+/* Every sprite shares one 96x96 canvas, so a square box lines the set up. */
 .btn {
     width: 1.9em;
     height: 1.9em;
@@ -322,7 +320,6 @@ body {
 
 #player {
     position: fixed;
-    inset: 0;
     top: 0; left: 0; right: 0; bottom: 0;
     background: #000;
     z-index: 50;
@@ -343,15 +340,12 @@ body {
 
 #osd {
     position: absolute;
-    inset: 0;
     top: 0; left: 0; right: 0; bottom: 0;
     pointer-events: none;
     opacity: 0;
     -webkit-transition: opacity 160ms ease-out;
     transition: opacity 160ms ease-out;
-    /* Only the bottom half is a fixed-height scrim; the top one is drawn by
-	   .osd-top so that it always ends where the text ends, however many
-	   lines the description wraps to. */
+    /* Scrim under the bottom bar so white text holds over a bright frame. */
     background:
 	-webkit-linear-gradient(top, rgba(0,0,0,0) 55%, rgba(0,0,0,0.85) 100%);
     background:
@@ -359,63 +353,6 @@ body {
 }
 #osd.on { opacity: 1; }
 
-/*
- * The title card sits dead centre for as long as the OSD is up -- start,
- * pause, seek, track change -- and fades with it.
- *
- * Text over video is the one place the palette cannot be trusted -- a white
- * title on a snow report is invisible -- and an opaque panel settles that far
- * better than scrims and text strokes ever did. It borrows the toast idiom:
- * surface fill, hairline border, green edge.
- */
-.osd-top {
-    position: absolute;
-    inset: 0;
-    top: 0; left: 0; right: 0; bottom: 0;
-    padding: var(--safe-y) var(--safe-x);
-    display: -webkit-box;
-    display: flex;
-    -webkit-box-align: center;
-    align-items: center;
-    -webkit-box-pack: center;
-    justify-content: center;
-}
-.osd-head {
-    /* A floor as well as a ceiling: plenty of entries carry no description at
-       all, and a lone title should still read as a card. */
-    min-width: 34ch;
-    max-width: 70ch;
-    padding: 1.5rem 2rem;
-    background: rgba(22,25,26,0.92);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    box-shadow: 0 1.2rem 3rem rgba(0,0,0,0.55);
-    -webkit-font-smoothing: antialiased;
-}
-.osd-top h1 {
-    font-size: 2.1rem;
-    font-weight: 700;
-    line-height: 1.15;
-    /* Episode titles run long enough to push the card into the seek bar. */
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}
-/* Plenty of entries have no description; do not pad the card for one. */
-.osd-top p:empty { display: none; }
-.osd-top p {
-    /* --dim is a panel colour: on video it needs to come up to near-white. */
-    color: #e3e7e7;
-    font-size: 1.05rem;
-    margin-top: 0.35rem;
-    line-height: 1.4;
-    /* Four lines is all a viewer reads at 3 m; the rest is noise over video. */
-    display: -webkit-box;
-    -webkit-line-clamp: 4;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}
 .osd-bottom {
     position: absolute;
     left: var(--safe-x);
@@ -487,21 +424,13 @@ body {
     color: #d3d8d8;
     font-variant-numeric: tabular-nums;
 }
-#osd-name, #osd-state, .times, .osd-foot {
+#osd-name, #osd-state, .times, #osd-tech {
     text-shadow: 0 1px 2px rgba(0,0,0,0.9);
-}
-.osd-foot {
-    margin-top: 0.8rem;
-    display: -webkit-box;
-    display: flex;
-    -webkit-box-align: center;
-    align-items: center;
-    -webkit-box-pack: end;
-    justify-content: flex-end;
-    gap: 1.6rem;
 }
 /* Stream facts. Deliberately quiet: it is reference, not chrome. */
 #osd-tech {
+    margin-top: 0.8rem;
+    text-align: right;
     font-size: 0.9rem;
     color: #9aa1a1;
     white-space: nowrap;
@@ -512,8 +441,7 @@ body {
 
 #spinner {
     position: absolute;
-    top: 48px; left: 48px;
-    margin: -24px 0 0 -24px;
+    top: 24px; left: 24px;
     width: 48px; height: 48px;
 }
 #spinner i {
@@ -532,7 +460,6 @@ body {
 
 #help {
     position: fixed;
-    inset: 0;
     top: 0; left: 0; right: 0; bottom: 0;
     background: rgba(0,0,0,0.92);
     z-index: 60;

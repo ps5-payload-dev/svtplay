@@ -26,6 +26,14 @@
     var elOsd     = document.getElementById("osd");
     var elSpinner = document.getElementById("spinner");
 
+    var elName    = document.getElementById("osd-name");
+    var elState   = document.getElementById("osd-state");
+    var elFill    = document.getElementById("osd-fill");
+    var elHead    = document.getElementById("osd-head");
+    var elPos     = document.getElementById("osd-pos");
+    var elDur     = document.getElementById("osd-dur");
+    var elTech    = document.getElementById("osd-tech");
+
     // Cards are cheap but not free, and A-Ö has letters with 200 shows in them.
     // Draw a screenful, then extend as the cursor approaches the end.
     var CHUNK = 40;
@@ -90,10 +98,8 @@
 
     /* -------------------------------------------------------- pad glyphs */
 
-    // Button prompts are drawn as small PNGs from img/btn. Every sprite shares
-    // one 96x96 canvas, so a single square box lines the whole set up without
-    // per-button nudging. The alt text is the old UTF-8 legend, which is what
-    // a viewer sees if the sprite ever fails to load.
+    // Button prompts are drawn as small PNGs from img/btn. The alt text is the
+    // UTF-8 legend, which is what a viewer sees if a sprite fails to load.
     var BTN = {
 	cross:     ["cross",    "✕"],
 	circle:    ["circle",   "○"],
@@ -120,13 +126,9 @@
 
     // Decoding a sprite the first time it is inserted costs a frame, and the
     // help overlay is rebuilt every time it is opened. Warm them all up once.
-    (function preloadGlyphs() {
-	for (var k in BTN) {
-	    if (Object.prototype.hasOwnProperty.call(BTN, k)) {
-		new Image().src = "img/btn/" + BTN[k][0] + ".png";
-	    }
-	}
-    }());
+    Object.keys(BTN).forEach(function (k) {
+	new Image().src = "img/btn/" + BTN[k][0] + ".png";
+    });
 
     function fmtTime(t) {
 	if (!isFinite(t) || t < 0) {
@@ -361,10 +363,10 @@
 
     /* --------------------------------------------------------------- rail */
 
-    // The rail is rebuilt on every render, which threw away the focus ring along
-    // with the old nodes. Remember which item had it and put it back on the new
-    // node; the return value says whether the cursor is still in the menu, and
-    // is what stops the fresh listing from grabbing it.
+    // The rail is rebuilt on every render, so the focus ring goes with the old
+    // nodes. Remember which item had it and put it back on the new node; the
+    // return value says whether the cursor is still in the menu, and is what
+    // stops the fresh listing from grabbing it.
     function drawRail(currentView) {
 	var focused = elRail.querySelector(".rail-item.focused");
 	var keep = focused ? focused.getAttribute("data-rail") : null;
@@ -517,6 +519,7 @@
 	railLock = drawRail(currentRoot());
 	gridEl = null;
 	entries = [];
+	drawn = 0;
 	busy(true);
 
 	function fresh() {
@@ -554,9 +557,6 @@
 	    SVT.programLetters().then(function (letters) {
 		if (!fresh()) { return; }
 		busy(false);
-		entries = [];
-		drawn = 0;
-		gridEl = null;
 		elContent.innerHTML = '<div class="grid">' +
 		    letters.map(function (l) {
 			return '<div class="chip focusable" data-letter="' +
@@ -614,14 +614,11 @@
 	fail(new Error("okänd vy: " + frame.view));
     }
 
-    // The start page is four independent rows; draw the frame immediately and
+    // The start page is a few independent rows; draw the frame immediately and
     // let each row fill in on its own, so one slow listing does not hold up the
-    // other three.
+    // others.
     function renderStart(my) {
 	var rows = SVT.startRows();
-	entries = [];
-	drawn = 0;
-	gridEl = null;
 
 	elContent.innerHTML = rows.map(function (r) {
 	    return '<h2 class="section-title">' + esc(r.name) +
@@ -795,7 +792,6 @@
      * resolution, and the line simply gets shorter.
      */
 
-    var elTech = document.getElementById("osd-tech");
     var variants = null;
     var manifestSubs = 0;
     // Audio renditions declared with EXT-X-MEDIA. Null means the manifest was
@@ -821,9 +817,9 @@
 	manifestSubs = 0;
 	audioTracks = [];
 	for (i = 0; i < lines.length; i++) {
-	    // Worth counting even though nothing uses them: it is the fastest
-	    // way to tell a manifest that carries subtitles from one that does
-	    // not, which is the whole question when text goes missing.
+	    // Counting subtitle renditions is the fastest way to tell a
+	    // manifest that carries text from one that does not, which is the
+	    // whole question when subtitles go missing.
 	    if (lines[i].indexOf("#EXT-X-MEDIA:") === 0 &&
 		lines[i].indexOf("TYPE=SUBTITLES") > 0) {
 		manifestSubs++;
@@ -863,12 +859,10 @@
 	return out.length ? out : null;
     }
 
-    // The manifest is fetched a second time for its metadata, and now also to
-    // choose a playback engine before anything is attached. It is in the CDN
-    // cache by now, and a refusal is not worth reporting: the answer is then
-    // simply "unknown", and attach() keeps the old behaviour.
-    //
-    // Never rejects.
+    // The manifest is fetched a second time for its metadata, and to choose a
+    // playback engine before anything is attached. It is in the CDN cache by
+    // now, and a refusal is not worth reporting: the answer is then simply
+    // "unknown", and attach() keeps the old behaviour. Never rejects.
     function loadMaster(url) {
 	variants = null;
 	audioTracks = null;
@@ -1222,9 +1216,7 @@
 	mode = "player";
 	elPlayer.hidden = false;
 	elSpinner.hidden = false;
-	document.getElementById("osd-title").textContent = entry.name;
-	document.getElementById("osd-desc").textContent = entry.description || "";
-	document.getElementById("osd-state").textContent = "Laddar…";
+	state("Laddar…");
 	showOsd(true);
 	startStats();
 
@@ -1350,12 +1342,11 @@
 	mode = "browse";
     }
 
-    // The bottom title is refreshed on every showing rather than written once
-    // in play(): whichever path put us in the player, the name on screen is
-    // the name of the thing playing.
+    // The title is refreshed on every showing rather than written once in
+    // play(): whichever path put us in the player, the name on screen is the
+    // name of the thing playing.
     function showOsd(sticky) {
-	document.getElementById("osd-name").textContent =
-	    currentEntry ? currentEntry.name : "";
+	elName.textContent = currentEntry ? currentEntry.name : "";
 	elOsd.className = "on";
 	if (osdTimer) {
 	    clearTimeout(osdTimer);
@@ -1372,20 +1363,16 @@
 
     function updateOsd() {
 	var live = !isFinite(video.duration);
-	var fill = document.getElementById("osd-fill");
-	var head = document.getElementById("osd-head");
 	var pct = live ? 100
 	    : (video.duration ? (video.currentTime / video.duration) * 100 : 0);
-	fill.style.width = pct + "%";
-	head.style.left = pct + "%";
-	document.getElementById("osd-pos").textContent =
-	    live ? "LIVE" : fmtTime(video.currentTime);
-	document.getElementById("osd-dur").textContent =
-	    live ? "" : fmtTime(video.duration);
+	elFill.style.width = pct + "%";
+	elHead.style.left = pct + "%";
+	elPos.textContent = live ? "LIVE" : fmtTime(video.currentTime);
+	elDur.textContent = live ? "" : fmtTime(video.duration);
     }
 
     function state(msg) {
-	document.getElementById("osd-state").textContent = msg || "";
+	elState.textContent = msg || "";
     }
 
     // Seek nudges arrive faster than the stream can respond, so add them up and
