@@ -21,13 +21,7 @@ var Input = (function () {
 		DOWN:     40,
 		TRIANGLE: 112, // F1
 		SQUARE:   113, // F2
-		OPTIONS:  114, // F3
-		L1:       116, // F5
-		R1:       117, // F6
-		L2:       118, // F7
-		R2:       119, // F8
-		L3:       120, // F9
-		R3:       121  // F10
+		OPTIONS:  114  // F3
 	};
 
 	// Held directions should repeat, but the browser's own key repeat on a
@@ -38,8 +32,7 @@ var Input = (function () {
 
 	// Every code in the pad mapping. Anything else is left to the browser, so a
 	// text field added later still works.
-	var HANDLED = [13, 27, 37, 38, 39, 40, 112, 113, 114, 116, 117, 118, 119,
-		120, 121];
+	var HANDLED = [13, 27, 37, 38, 39, 40, 112, 113, 114];
 
 	var handler = null;
 
@@ -60,8 +53,7 @@ var Input = (function () {
 			code = ({
 				Enter: 13, Escape: 27, Esc: 27,
 				ArrowLeft: 37, ArrowUp: 38, ArrowRight: 39, ArrowDown: 40,
-				F1: 112, F2: 113, F3: 114,
-				F5: 116, F6: 117, F7: 118, F8: 119, F9: 120, F10: 121
+				F1: 112, F2: 113, F3: 114
 			})[e.key] || 0;
 		}
 
@@ -69,7 +61,7 @@ var Input = (function () {
 			return;
 		}
 
-		// F1-F10 and the arrows would otherwise reach the browser chrome.
+		// F1-F3 and the arrows would otherwise reach the browser chrome.
 		e.preventDefault();
 		e.stopPropagation();
 
@@ -247,17 +239,6 @@ var Input = (function () {
 		return best ? focus(best, scope) : null;
 	}
 
-	// L1/R1 style paging: jump a screenful in document order.
-	function page(delta, scope) {
-		var items = all(scope);
-		var i = items.indexOf(current(scope));
-		if (i < 0) {
-			return focus(items[0], scope);
-		}
-		return focus(items[Math.max(0, Math.min(items.length - 1, i + delta))],
-			scope);
-	}
-
 	return {
 		KEY: KEY,
 		setHandler: setHandler,
@@ -269,7 +250,6 @@ var Input = (function () {
 		focusIndex: focusIndex,
 		indexOfFocused: indexOfFocused,
 		move: move,
-		page: page,
 		reveal: reveal
 	};
 }());

@@ -117,6 +117,7 @@ body {
 	display: flex;
 	flex: 1 1 auto;
 	min-height: 0;
+	padding-bottom: var(--safe-y);
 }
 
 /* ---------------------------------------------------------- pad glyphs */
@@ -136,38 +137,11 @@ body {
 }
 .btn + .btn { margin-left: 0.1em; }
 
-/* the "/" in prompts like L1 / R1 */
+/* the "/" in prompts that join two glyphs */
 .sep {
 	font-style: normal;
 	color: var(--faint);
 	margin: 0 0.15em;
-}
-
-#hints {
-	flex: 0 0 auto;
-	padding: 0.7rem var(--safe-x) var(--safe-y);
-	font-size: 0.95rem;
-	color: var(--faint);
-	display: flex;
-	gap: 1.6rem;
-	white-space: nowrap;
-	overflow: hidden;
-}
-#hints span,
-#osd-hints span {
-	display: -webkit-box;
-	display: flex;
-	-webkit-box-align: center;
-	align-items: center;
-}
-#hints b {
-	color: var(--dim);
-	font-weight: 600;
-	margin-right: 0.4em;
-	display: -webkit-box;
-	display: flex;
-	-webkit-box-align: center;
-	align-items: center;
 }
 
 /* ------------------------------------------------------------------ rail */
@@ -498,15 +472,8 @@ body {
 	display: flex;
 	-webkit-box-align: center;
 	align-items: center;
-	-webkit-box-pack: justify;
-	justify-content: space-between;
-	gap: 1.6rem;
-}
-#osd-hints {
-	font-size: 0.95rem;
-	color: #9aa1a1;
-	display: -webkit-box;
-	display: flex;
+	-webkit-box-pack: end;
+	justify-content: flex-end;
 	gap: 1.6rem;
 }
 /* Stream facts. Deliberately quiet: it is reference, not chrome. */
@@ -518,15 +485,6 @@ body {
 	letter-spacing: 0.01em;
 }
 #osd-tech .warn { color: #e6b455; }
-#osd-hints b {
-	color: var(--dim);
-	font-weight: 600;
-	margin-right: 0.4em;
-	display: -webkit-box;
-	display: flex;
-	-webkit-box-align: center;
-	align-items: center;
-}
 
 #spinner {
 	position: absolute;

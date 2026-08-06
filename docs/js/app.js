@@ -18,7 +18,6 @@
 	var elRail    = document.getElementById("rail");
 	var elContent = document.getElementById("content");
 	var elLoad    = document.getElementById("loadbar");
-	var elHints   = document.getElementById("hints");
 	var elHelp    = document.getElementById("help");
 	var elToast   = document.getElementById("toast");
 
@@ -103,14 +102,11 @@
 		options:   ["options",  "☰"],
 		dpad:      ["dpad",     "D-pad"],
 		"dpad-lr": ["dpad-lr",  "← →"],
-		"dpad-ud": ["dpad-ud",  "↑ ↓"],
-		l1: ["l1", "L1"], r1: ["r1", "R1"],
-		l2: ["l2", "L2"], r2: ["r2", "R2"],
-		l3: ["l3", "L3"], r3: ["r3", "R3"]
+		"dpad-ud": ["dpad-ud",  "↑ ↓"]
 	};
 
 	// A spec is whitespace separated: known names become sprites, anything
-	// else is passed through as a literal, so "l1 / r1" keeps its slash.
+	// else is passed through as a literal, so "dpad / cross" keeps its slash.
 	function glyphs(spec) {
 		return String(spec).split(/\s+/).map(function (t) {
 			var b = BTN[t];
@@ -123,7 +119,7 @@
 	}
 
 	// Decoding a sprite the first time it is inserted costs a frame, and the
-	// hint bar is rebuilt on every view change. Warm them all up once.
+	// help overlay is rebuilt every time it is opened. Warm them all up once.
 	(function preloadGlyphs() {
 		for (var k in BTN) {
 			if (Object.prototype.hasOwnProperty.call(BTN, k)) {
@@ -131,16 +127,6 @@
 			}
 		}
 	}());
-
-	function hintHtml(pairs) {
-		return pairs.map(function (p) {
-			return "<span><b>" + glyphs(p[0]) + "</b>" + esc(p[1]) + "</span>";
-		}).join("");
-	}
-
-	function hints(pairs) {
-		elHints.innerHTML = hintHtml(pairs);
-	}
 
 	function fmtTime(t) {
 		if (!isFinite(t) || t < 0) {
@@ -1170,15 +1156,6 @@
 		document.getElementById("osd-title").textContent = entry.name;
 		document.getElementById("osd-desc").textContent = entry.description || "";
 		document.getElementById("osd-state").textContent = "Laddar…";
-		document.getElementById("osd-hints").innerHTML = hintHtml([
-			["cross",   "Paus"],
-			["dpad-lr", "10 s"],
-			["l1 r1",   "1 min"],
-			["l2 r2",   "5 min"],
-			["square",  "Text"],
-			["triangle", "Ljudspår"],
-			["circle",  "Stäng"]
-		]);
 		showOsd(true);
 		startStats();
 
@@ -1265,7 +1242,6 @@
 		elSpinner.hidden = true;
 		currentEntry = null;
 		mode = "browse";
-		browseHints();
 	}
 
 	function showOsd(sticky) {
@@ -1451,8 +1427,6 @@
 				["cross", "Enter", "Öppna"],
 				["circle", "Escape", "Tillbaka"],
 				["dpad", "Piltangenter", "Flytta markören"],
-				["l1 / r1", "F5 / F6", "Sida upp / ner"],
-				["l2 / r2", "F7 / F8", "Först / sist"],
 				["triangle", "F1", "Uppdatera listan"],
 				["options", "F3", "Den här hjälpen"]
 			]) + "</div>" +
@@ -1460,13 +1434,9 @@
 				["cross", "Enter", "Spela / pausa"],
 				["circle", "Escape", "Stäng spelaren"],
 				["dpad-lr", "Piltangenter", "Spola 10 sekunder"],
-				["dpad-ud", "Piltangenter", "Volym"],
-				["l1 / r1", "F5 / F6", "Spola 1 minut"],
-				["l2 / r2", "F7 / F8", "Spola 5 minuter"],
+				["dpad-ud", "Piltangenter", "Spola 5 minuter"],
 				["square", "F2", "Byt textspår"],
-				["triangle", "F1", "Byt ljudspår"],
-				["l3", "F9", "Börja om"],
-				["r3", "F10", "Fyll skärmen / passa in"]
+				["triangle", "F1", "Byt ljudspår"]
 			]) + "</div>" +
 			// The full stream readout only exists while something is playing.
 			(elPlayer.hidden ? "" :
@@ -1487,16 +1457,6 @@
 	}
 
 	/* ------------------------------------------------------------- input */
-
-	function browseHints() {
-		hints([
-			["cross", "Öppna"],
-			["circle", "Tillbaka"],
-			["l1 r1", "Sida"],
-			["triangle", "Uppdatera"],
-			["options", "Hjälp"]
-		]);
-	}
 
 	Input.setHandler(function (code) {
 		if (mode === "help") {
@@ -1539,13 +1499,6 @@
 		case K.DOWN:  Input.move("down", inRail() ? elRail : SCOPE); break;
 		case K.CROSS: openFocused(); break;
 		case K.CIRCLE: back(); break;
-		case K.L1:    Input.page(-CHUNK / 2, SCOPE); break;
-		case K.R1:    drawChunk(); Input.page(CHUNK / 2, SCOPE); break;
-		case K.L2:    Input.focusIndex(0, SCOPE); break;
-		case K.R2:
-			while (drawn < entries.length) { drawChunk(); }
-			Input.focusIndex(Input.all(SCOPE).length - 1, SCOPE);
-			break;
 		case K.TRIANGLE:
 			SVT.clearCache();
 			toast("Uppdaterar…");
@@ -1569,34 +1522,15 @@
 		case K.CIRCLE:
 			stop();
 			break;
+		// Left/Right nudge, Up/Down take the long stride. Both go through the
+		// same accumulator, so holding Down and then tapping Right adds up to
+		// one seek rather than a stutter of separate ones.
 		case K.LEFT:  seek(-10); break;
 		case K.RIGHT: seek(10); break;
-		case K.L1:    seek(-60); break;
-		case K.R1:    seek(60); break;
-		case K.L2:    seek(-300); break;
-		case K.R2:    seek(300); break;
-		case K.UP:
-			video.volume = Math.min(1, video.volume + 0.1);
-			toast("Volym " + Math.round(video.volume * 100) + "%");
-			showOsd(false);
-			break;
-		case K.DOWN:
-			video.volume = Math.max(0, video.volume - 0.1);
-			toast("Volym " + Math.round(video.volume * 100) + "%");
-			showOsd(false);
-			break;
+		case K.DOWN:  seek(-300); break;
+		case K.UP:    seek(300); break;
 		case K.SQUARE:   cycleTextTracks(); showOsd(false); break;
 		case K.TRIANGLE: cycleAudioTracks(); showOsd(false); break;
-		case K.L3:
-			video.currentTime = 0;
-			showOsd(false);
-			break;
-		case K.R3:
-			video.style.objectFit =
-				video.style.objectFit === "cover" ? "contain" : "cover";
-			toast(video.style.objectFit === "cover"
-				? "Fyller skärmen" : "Passar in bilden");
-			break;
 		case K.OPTIONS: toggleHelp(); break;
 		default: break;
 		}
@@ -1606,7 +1540,6 @@
 
 	tickClock();
 	setInterval(tickClock, 20000);
-	browseHints();
 	stack = [frameOf("start", null, null)];
 	render(stack[0]);
 

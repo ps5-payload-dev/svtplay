@@ -35,13 +35,9 @@ and refuse `fetch()` outright, so a static server is the safer starting point.
 |---|---|---|---|
 | ✕ | Enter | Open | Play / pause |
 | ○ | Escape | Back (or jump to the menu) | Close the player |
-| D-pad | Arrows | Move the cursor | ← → seek 10 s · ↑ ↓ volume |
-| L1 / R1 | F5 / F6 | Page up / down | Seek ±1 min |
-| L2 / R2 | F7 / F8 | First / last | Seek ±5 min |
+| D-pad | Arrows | Move the cursor | ← → seek 10 s · ↑ ↓ seek 5 min |
 | △ | F1 | Refresh (drops the cache) | Cycle audio track |
 | □ | F2 | — | Cycle subtitles |
-| L3 | F9 | — | Restart from the beginning |
-| R3 | F10 | — | Fill screen / fit |
 | ☰ | F3 | On-screen key list | On-screen key list |
 
 Movement is geometric rather than index-based: given a direction it takes the
