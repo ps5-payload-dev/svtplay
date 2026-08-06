@@ -93,7 +93,6 @@ install_file(const char* path, const uint8_t* data, size_t size) {
 }
 
 
-
 static int
 install_app(const char* title_id, const char* dir) {
   int (*sceAppInstUtilAppInstallTitleDir)(const char*, const char*, void*) = 0;
@@ -123,6 +122,10 @@ main(int argc, char *argv[]) {
 
   sceAppInstUtilAppUnInstall(TITLE_ID);
 
+  //
+  // Install some files to /system_ex/app
+  //
+
   remount_system_ex();
 
   if(mkdir("/system_ex/app/"TITLE_ID, 0755) && errno != EEXIST) {
@@ -144,7 +147,7 @@ main(int argc, char *argv[]) {
   }
 
   //
-  //
+  // Install some more files to /user/app
   //
 
   if(mkdir("/user/app/"TITLE_ID, 0755) && errno != EEXIST) {
