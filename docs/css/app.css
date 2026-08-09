@@ -501,3 +501,14 @@ body {
     max-width: 70vw;
 }
 #toast.error { border-left-color: var(--live); }
+
+.icon {
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    vertical-align: -0.125em;
+    fill: currentColor;
+    -webkit-user-select: none;
+    user-select: none;
+}
+.badge.folder .icon { vertical-align: -0.1em; }

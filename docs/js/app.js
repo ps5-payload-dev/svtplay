@@ -96,6 +96,19 @@
 	elClock.textContent = d.getHours() + ":" + (m < 10 ? "0" : "") + m;
     }
 
+    /* ------------------------------------------------------------ icons */
+
+    var ICON = {
+	play:    '<path d="M6 3.5L17.5 10 6 16.5z"/>',
+	folder:  '<path d="M2 4.5h6l1.6 2H18v9.5H2z"/>'
+    };
+
+    function icon(name) {
+	return '<svg class="icon" viewBox="0 0 20 20" width="1em" height="1em" ' +
+	    'fill="currentColor" aria-hidden="true" focusable="false">' +
+	    ICON[name] + "</svg>";
+    }
+
     /* -------------------------------------------------------- pad glyphs */
 
     // Button prompts are drawn as small PNGs from img/btn. The alt text is the
@@ -149,13 +162,13 @@
 	    ? '<img src="' + esc(entry.image) + '" alt="" ' +
 	    'onerror="this.style.display=\'none\'">'
 	    : '<span class="glyph">' +
-	    (entry.type === "folder" ? "▤" : "▶") + "</span>";
+	    icon(entry.type === "folder" ? "folder" : "play") + "</span>";
 
 	var badge = "";
 	if (entry.live) {
 	    badge = '<span class="badge">Live</span>';
 	} else if (entry.type === "folder") {
-	    badge = '<span class="badge folder">▤</span>';
+	    badge = '<span class="badge folder">' + icon("folder") + "</span>";
 	}
 
 	return '<div class="card focusable" data-i="' + i + '"' +
