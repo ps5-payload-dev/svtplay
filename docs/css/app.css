@@ -359,7 +359,6 @@ body {
      * -webkit-line-clamp, at the cost of cutting the last line mid-stroke
      * instead of ellipsing it.
      */
-    max-height: 18rem;
     overflow: hidden;
     display: -webkit-box;
     -webkit-box-orient: vertical;
