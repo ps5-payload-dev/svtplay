@@ -60,11 +60,10 @@ var SVT = (function () {
 
     // Only HLS is useful here: a <video> element plays it natively in WebKit,
     // and hls.js covers the rest. DASH needs a whole MSE player of its own, so
-    // those references are skipped even when SVT offers them. AVC variants come
-    // first because HEVC decoding in an embedded WebKit is a coin flip.
+    // those references are skipped even when SVT offers them.
     var FORMATS = [
-	"hls-ts-avc", "hls", "hls-cmaf-avc", "hls-ts-avc-51",
-	"hls-cmaf", "hls-cmaf-live", "hls-ts-full", "hls-cmaf-full"
+	"hls-ts-full", "hls-cmaf-full", "hls-ts-avc", "hls", "hls-cmaf-avc",
+	"hls-ts-avc-51", "hls-cmaf", "hls-cmaf-live"
     ];
 
     // Listings get browsed back and forth (a show, back to the letter, the next
