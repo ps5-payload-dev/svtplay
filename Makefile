@@ -30,7 +30,7 @@ LDADD  := -lSceIpmi -lSceAppInstUtil
 
 all: $(ELF)
 
-$(ELF): install.c
+$(ELF): main.c
 	$(CC) $(CFLAGS) $(LDADD) -o $@ $^
 
 install.c: sce_sys/param.json sce_sys/icon0.png sce_sys/pic1.png
@@ -38,5 +38,7 @@ install.c: sce_sys/param.json sce_sys/icon0.png sce_sys/pic1.png
 clean:
 	rm -f $(ELF)
 
-test: $(ELF)
+install: $(ELF)
 	$(PS5_DEPLOY) -h $(PS5_HOST) -p $(PS5_PORT) $^
+
+test: install
