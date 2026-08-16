@@ -107,25 +107,6 @@ body {
     padding-bottom: var(--safe-y);
 }
 
-/* button glyphs */
-
-/* Every sprite shares one 96x96 canvas, so a square box lines the set up. */
-.btn {
-    width: 1.9em;
-    height: 1.9em;
-    vertical-align: middle;
-    -webkit-user-select: none;
-    user-select: none;
-}
-.btn + .btn { margin-left: 0.1em; }
-
-/* the "/" in prompts that join two glyphs */
-.sep {
-    font-style: normal;
-    color: var(--faint);
-    margin: 0 0.15em;
-}
-
 /* rail */
 
 #rail {
@@ -457,33 +438,6 @@ body {
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* overlays */
-
-#help {
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.92);
-    z-index: 60;
-    padding: var(--safe-y) var(--safe-x);
-    overflow-y: auto;
-}
-#help h2 { font-size: 2.25rem; margin-bottom: 1.2rem; }
-#help table { border-collapse: collapse; font-size: 1.3rem; }
-#help td { padding: 0.35rem 1.4rem 0.35rem 0; vertical-align: middle; }
-#help td:first-child { white-space: nowrap; line-height: 0; }
-#help td:first-child .btn { width: 2.3em; height: 2.3em; }
-#help td:nth-child(2) { color: var(--faint); white-space: nowrap; }
-#help .cols { display: flex; gap: 5rem; flex-wrap: wrap; }
-#help h3 { font-size: 1.5rem; color: var(--dim); margin-bottom: 0.6rem; font-weight: 600; }
-
-#help-stats table { font-variant-numeric: tabular-nums; }
-#help-stats td:first-child {
-    color: var(--faint);
-    white-space: nowrap;
-    line-height: inherit;
-    padding-right: 1.6rem;
-}
-#help-stats td:nth-child(2) { color: var(--text); white-space: normal; }
-#help-stats .warn { color: #e6b455; }
 
 #toast {
     position: fixed;

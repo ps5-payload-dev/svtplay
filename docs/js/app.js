@@ -18,7 +18,6 @@
     var elRail    = document.getElementById("rail");
     var elContent = document.getElementById("content");
     var elLoad    = document.getElementById("loadbar");
-    var elHelp    = document.getElementById("help");
     var elToast   = document.getElementById("toast");
 
     var elPlayer  = document.getElementById("player");
@@ -55,7 +54,7 @@
     var entries = [];       // what the current listing is showing
     var drawn = 0;
     var gridEl = null;
-    var mode = "browse";    // browse | player | help
+    var mode = "browse";    // browse | player
 
     // True while the cursor is sitting in the nav rail. Opening a rail item
     // loads its view but leaves the cursor on the menu, so the viewer can run
@@ -108,40 +107,6 @@
 	    'fill="currentColor" aria-hidden="true" focusable="false">' +
 	    ICON[name] + "</svg>";
     }
-
-    /* -------------------------------------------------------- pad glyphs */
-
-    // Button prompts are drawn as small PNGs from img/btn. The alt text is the
-    // UTF-8 legend, which is what a viewer sees if a sprite fails to load.
-    var BTN = {
-	cross:     ["cross",    "✕"],
-	circle:    ["circle",   "○"],
-	square:    ["square",   "□"],
-	triangle:  ["triangle", "△"],
-	options:   ["options",  "☰"],
-	dpad:      ["dpad",     "D-pad"],
-	"dpad-lr": ["dpad-lr",  "← →"],
-	"dpad-ud": ["dpad-ud",  "↑ ↓"]
-    };
-
-    // A spec is whitespace separated: known names become sprites, anything
-    // else is passed through as a literal, so "dpad / cross" keeps its slash.
-    function glyphs(spec) {
-	return String(spec).split(/\s+/).map(function (t) {
-	    var b = BTN[t];
-	    if (!b) {
-		return '<i class="sep">' + esc(t) + "</i>";
-	    }
-	    return '<img class="btn" src="img/btn/' + b[0] + '.png" alt="' +
-		esc(b[1]) + '">';
-	}).join("");
-    }
-
-    // Decoding a sprite the first time it is inserted costs a frame, and the
-    // help overlay is rebuilt every time it is opened. Warm them all up once.
-    Object.keys(BTN).forEach(function (k) {
-	new Image().src = "img/btn/" + BTN[k][0] + ".png";
-    });
 
     function fmtTime(t) {
 	if (!isFinite(t) || t < 0) {
@@ -1009,9 +974,6 @@
 	statsPrev = {at: now, bytes: bytes, total: q.total};
 
 	drawTech();
-	if (mode === "help") {
-	    drawHelpStats();
-	}
     }
 
     function bitrateText() {
@@ -1048,84 +1010,6 @@
 	    out.push('<span class="warn">' + stats.dropped + " tappade bilder</span>");
 	}
 	elTech.innerHTML = out.join(" · ");
-    }
-
-    function statsRows() {
-	var v = variant();
-	var rows = [];
-	var pct = stats.total ? (stats.dropped / stats.total) * 100 : 0;
-
-	rows.push(["Upplösning", stats.h ? stats.w + "×" + stats.h : "–"]);
-	rows.push(["Bildfrekvens", fpsText() || "–"]);
-	rows.push(["Bithastighet", bitrateText() || "–"]);
-	if (v && v.codecs) { rows.push(["Kodek", esc(codecName(v.codecs))]); }
-	// Three numbers, because "no subtitles" has three different causes:
-	// none offered, offered but not fetched, fetched but not rendered.
-	var shown = activeTrack();
-	rows.push(["Textspår", subtitleTracks().length +
-		   " (i manifest: " + manifestSubs + ", separata: " + subUrls.length + ")"]);
-	rows.push(["Aktivt textspår", shown
-		   ? esc(shown.label || shown.language || "?") + ", " +
-		   (shown.cues ? shown.cues.length + " repliker" :
-		    '<span class="warn">inga repliker inlästa</span>')
-		   : "av"]);
-	rows.push(["Buffert", stats.buf ? stats.buf.toFixed(1) + " s" : "–"]);
-	rows.push(["Bilder", stats.total
-		   ? stats.total + " avkodade, " +
-		   (stats.dropped
-		    ? '<span class="warn">' + stats.dropped + " tappade (" +
-		    pct.toFixed(1) + " %)</span>"
-		    : "0 tappade")
-		   : "–"]);
-	// The line that tells a silent stream apart from a broken one: where
-	// the audio is declared, and whether the engine playing it can reach
-	// audio in that position at all.
-	var separate = hasSeparateAudio();
-	rows.push(["Ljudspår", audioTracks === null
-		   ? "manifest ej läst"
-		   : (audioTracks.length
-		      ? audioTracks.length + (separate
-					      ? " separata: "
-					      : " i manifest: ") +
-		      esc(audioTracks.map(function (t) {
-			  return (t.name || t.language || "?") +
-			      (t.channels ? " (" + t.channels + " kan.)" : "");
-		      }).join(", "))
-		      : "muxat i videoströmmen")]);
-
-	if (hls) {
-	    rows.push(["Uppspelning", "hls.js " + (window.Hls.version || "")]);
-	    if (hls.levels && hls.levels.length) {
-		rows.push(["Kvalitetsnivå", (hls.currentLevel + 1) + " av " +
-			   hls.levels.length + (hls.autoLevelEnabled ? " (auto)" : "")]);
-	    }
-	    if (hls.bandwidthEstimate) {
-		rows.push(["Uppskattad bandbredd",
-			   (hls.bandwidthEstimate / 1e6).toFixed(1) + " Mbit/s"]);
-	    }
-	} else {
-	    rows.push(["Uppspelning", separate === true
-		       ? '<span class="warn">WebKit HLS (separat ljud – ' +
-		       "sannolikt tyst)</span>"
-		       : "WebKit HLS"]);
-	    if (variants) {
-		rows.push(["Renditioner", String(variants.length)]);
-	    }
-	}
-	return rows;
-    }
-
-    function statsHtml() {
-	return "<table>" + statsRows().map(function (r) {
-	    return "<tr><td>" + esc(r[0]) + "</td><td>" + r[1] + "</td></tr>";
-	}).join("") + "</table>";
-    }
-
-    function drawHelpStats() {
-	var box = document.getElementById("help-stats");
-	if (box) {
-	    box.innerHTML = statsHtml();
-	}
     }
 
     function startStats() {
@@ -1524,59 +1408,9 @@
 	stop();
     });
 
-    /* help */
-
-    function helpHtml() {
-	function rows(list) {
-	    return "<table>" + list.map(function (r) {
-		return "<tr><td>" + glyphs(r[0]) + "</td><td>" + esc(r[1]) +
-		    "</td><td>" + esc(r[2]) + "</td></tr>";
-	    }).join("") + "</table>";
-	}
-	return "<h2>Kontroller</h2><div class=\"cols\">" +
-	    "<div><h3>Bläddra</h3>" + rows([
-		["cross", "Enter", "Öppna"],
-		["circle", "Escape", "Tillbaka"],
-		["dpad", "Piltangenter", "Flytta markören"],
-		["triangle", "F1", "Uppdatera listan"],
-		["options", "F3", "Den här hjälpen"]
-	    ]) + "</div>" +
-	    "<div><h3>Spelare</h3>" + rows([
-		["cross", "Enter", "Spela / pausa"],
-		["circle", "Escape", "Stäng spelaren"],
-		["dpad-lr", "Piltangenter", "Spola 10 sekunder"],
-		["dpad-ud", "Piltangenter", "Spola 5 minuter"],
-		["square", "F2", "Byt textspår"],
-		["triangle", "F1", "Byt ljudspår"]
-	    ]) + "</div>" +
-	    // The full stream readout only exists while something is playing.
-	(elPlayer.hidden ? "" :
-	 "<div><h3>Ström</h3><div id=\"help-stats\">" + statsHtml() +
-	 "</div></div>") +
-	    "</div>";
-    }
-
-    function toggleHelp() {
-	if (mode === "help") {
-	    elHelp.hidden = true;
-	    mode = elPlayer.hidden ? "browse" : "player";
-	    return;
-	}
-	elHelp.innerHTML = helpHtml();
-	elHelp.hidden = false;
-	mode = "help";
-    }
-
     /* input */
 
     Input.setHandler(function (code) {
-	if (mode === "help") {
-	    if (code === K.CIRCLE || code === K.OPTIONS || code === K.CROSS) {
-		toggleHelp();
-	    }
-	    return;
-	}
-
 	if (mode === "player") {
 	    playerKey(code);
 	    return;
@@ -1615,7 +1449,6 @@
 	    toast("Uppdaterar…");
 	    render(stack[stack.length - 1]);
 	    break;
-	case K.OPTIONS: toggleHelp(); break;
 	default: break;
 	}
     }
@@ -1642,7 +1475,6 @@
 	case K.UP:    seek(300); break;
 	case K.SQUARE:   cycleTextTracks(); showOsd(false); break;
 	case K.TRIANGLE: cycleAudioTracks(); showOsd(false); break;
-	case K.OPTIONS: toggleHelp(); break;
 	default: break;
 	}
     }

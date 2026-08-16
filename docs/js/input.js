@@ -10,7 +10,6 @@ var Input = (function () {
 	DOWN:     40,
 	TRIANGLE: 112, // F1
 	SQUARE:   113, // F2
-	OPTIONS:  114  // F3
     };
 
     // Held directions should repeat, but the browser's own key repeat on a
@@ -21,7 +20,7 @@ var Input = (function () {
 
     // Every code in the pad mapping. Anything else is left to the browser, so a
     // text field added later still works.
-    var HANDLED = [13, 27, 37, 38, 39, 40, 112, 113, 114];
+    var HANDLED = [13, 27, 37, 38, 39, 40, 112, 113];
 
     var handler = null;
 
@@ -42,7 +41,7 @@ var Input = (function () {
 	    code = ({
 		Enter: 13, Escape: 27, Esc: 27,
 		ArrowLeft: 37, ArrowUp: 38, ArrowRight: 39, ArrowDown: 40,
-		F1: 112, F2: 113, F3: 114
+		F1: 112, F2: 113
 	    })[e.key] || 0;
 	}
 
