@@ -342,13 +342,12 @@ body {
 #osd-desc {
     position: absolute;
     left: 50%;
-    top: 50%;
+    top: 40%;
     width: 75%;
     -webkit-transform: translate(-50%, -50%);
     transform: translate(-50%, -50%);
     padding: 1.4rem 1.6rem;
     border-radius: var(--radius);
-    border-color: #2ec27e;
     background: rgba(0,0,0,0.62);
     font-size: 2rem;
     line-height: 1.5;
@@ -360,7 +359,7 @@ body {
      * -webkit-line-clamp, at the cost of cutting the last line mid-stroke
      * instead of ellipsing it.
      */
-    max-height: 15rem;
+    max-height: 18rem;
     overflow: hidden;
     display: -webkit-box;
     -webkit-box-orient: vertical;
