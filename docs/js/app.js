@@ -26,6 +26,7 @@
     var elSpinner = document.getElementById("spinner");
 
     var elName    = document.getElementById("osd-name");
+    var elDesc    = document.getElementById("osd-desc");
     var elState   = document.getElementById("osd-state");
     var elFill    = document.getElementById("osd-fill");
     var elHead    = document.getElementById("osd-head");
@@ -1244,6 +1245,7 @@
     // name of the thing playing.
     function showOsd(sticky) {
 	elName.textContent = currentEntry ? currentEntry.name : "";
+	showDesc(currentEntry ? currentEntry.description : "");
 	elOsd.className = "on";
 	if (osdTimer) {
 	    clearTimeout(osdTimer);
@@ -1256,6 +1258,19 @@
 		}
 	    }, 4000);
 	}
+    }
+
+    // The synopsis goes in the middle of the frame rather than into the bottom
+    // bar: it is a paragraph, not a label, and there is no room beside the
+    // times. Entries without one -- most channels, some live rows -- leave
+    // nothing behind, since an empty panel over the picture reads as a fault.
+    // Descriptions arrive with newlines and doubled spaces from the API, and a
+    // centred block makes that ragged, so collapse the whitespace first.
+    function showDesc(text) {
+	var s = String(text == null ? "" : text).replace(/\s+/g, " ");
+	s = s.replace(/^ /, "").replace(/ $/, "");
+	elDesc.textContent = s;
+	elDesc.hidden = !s;
     }
 
     function updateOsd() {
